@@ -152,6 +152,8 @@
   chargerVideo().then(() => { const reste = Math.max(0, 900 - (performance.now() - departPre)); setTimeout(lever, reste); });
   setTimeout(lever, 7000); // jamais plus de 7 s d'attente : la vidéo finira de charger derrière
 
+  initGalerie(); // la visionneuse marche partout, même sans GSAP ni mouvement
+
   if (!(G && ST)) return; // sans GSAP : la page reste lisible, rien d'autre à animer
 
   if (reduit) { initReversible(); initZone(); initFaq(); initFormulaire(); fondContinu(); ST.refresh(); return; }
@@ -191,6 +193,29 @@
     });
   });
   $$('[data-parallaxe]').forEach(img => G.fromTo(img, { yPercent: -6 }, { yPercent: 6, ease: 'none', scrollTrigger: { trigger: img.parentElement, start: 'top bottom', end: 'bottom top', scrub: true } }));
+
+  // ================================================================== Réalisations : chaque photo sort de son rideau
+  $$('.photo').forEach((f, k) => {
+    const cadre = $('.photo__cadre', f), im = $('img', f); if (!cadre || !im) return;
+    G.timeline({ scrollTrigger: { trigger: f, start: 'top 86%', once: true } })
+      .fromTo(cadre, { clipPath: 'inset(100% 0% 0% 0% round 10px)' }, { clipPath: 'inset(0% 0% 0% 0% round 10px)', duration: 1.25, ease: 'power4.inOut', delay: (k % 2) * 0.12 })
+      .fromTo(im, { scale: 1.28 }, { scale: 1, duration: 1.7, ease: 'power3.out' }, '<')
+      .from($('figcaption', f), { y: 18, opacity: 0, duration: .8, ease: 'power3.out' }, '<+=.5')
+      .fromTo($('.photo__plus', f), { scale: 0, opacity: 0 }, { scale: 1, opacity: 1, duration: .6, ease: 'back.out(2)' }, '<');
+    G.fromTo(im, { yPercent: -5 }, { yPercent: 5, ease: 'none', scrollTrigger: { trigger: f, start: 'top bottom', end: 'bottom top', scrub: true } });
+  });
+  // Pastille « Agrandir » qui suit le pointeur sur les photos
+  const galerie = $('#galerie'), curseur = $('.galerie__curseur');
+  if (fin && galerie && curseur && matchMedia('(hover: hover)').matches) {
+    racine.classList.add('js-curseur');
+    G.set(curseur, { xPercent: -50, yPercent: -50, scale: .4 });
+    const xC = G.quickTo(curseur, 'x', { duration: .45, ease: 'power3.out' }), yC = G.quickTo(curseur, 'y', { duration: .45, ease: 'power3.out' });
+    galerie.addEventListener('pointermove', e => { const r = galerie.getBoundingClientRect(); xC(e.clientX - r.left); yC(e.clientY - r.top); });
+    $$('.photo__ouvrir', galerie).forEach(a => {
+      a.addEventListener('pointerenter', () => G.to(curseur, { scale: 1, opacity: 1, duration: .4, ease: 'power3.out', overwrite: 'auto' }));
+      a.addEventListener('pointerleave', () => G.to(curseur, { scale: .4, opacity: 0, duration: .3, ease: 'power2.out', overwrite: 'auto' }));
+    });
+  }
 
   // ================================================================== Marques : les noms se remplissent
   $$('[data-remplit]').forEach(el => G.fromTo(el, { '--plein': '0%' }, { '--plein': '100%', ease: 'none', scrollTrigger: { trigger: el, start: 'top 88%', end: 'top 40%', scrub: true } }));
@@ -268,6 +293,36 @@
     ST.create({ trigger: '.zone__epingle', start: 'top top', end: '+=260%', pin: true, scrub: true, anticipatePin: 1,
       onUpdate: s => { p = s.progress; monter(); if (cote) cote.regler(p); allumer(p); } });
     G.from('.zone__communes li', { y: 20, opacity: 0, duration: .8, ease: 'power3.out', stagger: .06, scrollTrigger: { trigger: '.zone__epingle', start: 'top 70%', once: true } });
+  }
+
+  // ================================================================== Visionneuse des photos de chantier
+  // Sans <dialog> ou sans JavaScript, chaque lien ouvre simplement la photo en grand.
+  function initGalerie() {
+    const liens = $$('.photo__ouvrir'), dlg = $('#visionneuse');
+    if (!liens.length || !dlg || typeof dlg.showModal !== 'function') return;
+    const img = $('#visionneuse-img'), leg = $('#visionneuse-legende'), num = $('#visionneuse-n');
+    const photos = liens.map(a => ({ src: a.getAttribute('href'), alt: $('img', a).alt, leg: $('figcaption span:last-child', a.closest('figure')).textContent.trim() }));
+    let i = 0, retour = null, x0 = null, glisse = false;
+    const montrer = (k, sens) => {
+      i = (k + photos.length) % photos.length; const p = photos[i];
+      img.src = p.src; img.alt = p.alt; leg.textContent = p.leg; num.textContent = i + 1;
+      if (MOTION && sens) G.fromTo(img, { x: sens * 48, opacity: 0 }, { x: 0, opacity: 1, duration: .6, ease: 'power3.out', overwrite: true });
+      new Image().src = photos[(i + 1) % photos.length].src; // la suivante se prépare
+    };
+    liens.forEach((a, k) => a.addEventListener('click', e => {
+      e.preventDefault(); retour = a; montrer(k, 0);
+      dlg.showModal(); racine.classList.add('visionneuse-ouverte'); if (lenis) lenis.stop();
+      if (MOTION) { G.fromTo(dlg, { opacity: 0 }, { opacity: 1, duration: .35, ease: 'power2.out' }); G.fromTo(img, { scale: .94, opacity: 0 }, { scale: 1, opacity: 1, duration: .8, ease: 'power3.out', overwrite: true }); }
+    }));
+    dlg.addEventListener('close', () => { racine.classList.remove('visionneuse-ouverte'); if (lenis) lenis.start(); if (retour) retour.focus({ preventScroll: true }); });
+    $('[data-fermer]', dlg).addEventListener('click', () => dlg.close());
+    $$('[data-pas]', dlg).forEach(b => b.addEventListener('click', () => { const d = Number(b.dataset.pas); montrer(i + d, d); }));
+    dlg.addEventListener('keydown', e => { if (e.key === 'ArrowRight') montrer(i + 1, 1); else if (e.key === 'ArrowLeft') montrer(i - 1, -1); });
+    // Au doigt : glisser à gauche ou à droite pour changer de photo
+    dlg.addEventListener('pointerdown', e => { glisse = false; x0 = e.pointerType === 'mouse' ? null : e.clientX; });
+    dlg.addEventListener('pointerup', e => { if (x0 === null) return; const d = e.clientX - x0; x0 = null; if (Math.abs(d) > 50) { glisse = true; montrer(i + (d < 0 ? 1 : -1), d < 0 ? 1 : -1); } });
+    // Un clic hors de la photo et des boutons referme
+    dlg.addEventListener('click', e => { if (!glisse && (e.target === dlg || e.target.classList.contains('visionneuse__photo'))) dlg.close(); glisse = false; });
   }
 
   // ================================================================== FAQ : ouverture animée
