@@ -1,0 +1,96 @@
+<!-- Kit de mesure Belle Devanture v2 : rien n'est envoyé à Google avant l'accord du visiteur -->
+<script>
+(function () {
+  var ID = '{{MESURE_ID}}';
+  window.dataLayer = window.dataLayer || [];
+  window.gtag = window.gtag || function () { dataLayer.push(arguments); };
+  // consentement refusé par défaut, sauf si le site le gère déjà (Complianz, Site Kit…) : on ne le redéfinit jamais
+  var managed = [].some.call(window.dataLayer, function (a) { return a && a[0] === 'consent' && a[1] === 'default'; });
+  if (!managed) gtag('consent', 'default', { analytics_storage: 'denied', ad_storage: 'denied', ad_user_data: 'denied', ad_personalization: 'denied' });
+  var on = false, queue = [], errors = 0;
+  // rien ne part avant l'accord : les signaux attendent (20 au plus) et partent à l'accord, sinon jamais
+  function send(name, params) { if (on) gtag('event', name, params || {}); else if (queue.length < 20) queue.push([name, params || {}]); }
+  // jamais de donnée personnelle : e-mails et longs numéros masqués, 100 caractères au plus
+  function clean(v) { return String(v || '').replace(/[\w.+-]+@[\w-]+\.[\w.]+/g, '[e-mail]').replace(/\d{6,}/g, '[n]').slice(0, 100); }
+  // à appeler par le bandeau de consentement quand le visiteur accepte la mesure d'audience (à chaque page tant que son accord vaut)
+  window.bdAnalyticsConsent = function () {
+    if (on) return;
+    on = true;
+    gtag('consent', 'update', { analytics_storage: 'granted' });
+    // la balise Google du site est déjà là (Site Kit, Tag Manager…) : on ne la charge pas une seconde fois ; une balise
+    // d'un autre usage seulement (Google Ads…) ne mesure pas l'audience : on y ajoute alors la mesure du site
+    var tags = [].map.call(document.querySelectorAll('script[src*="googletagmanager.com/gtag/js"], script[src*="googletagmanager.com/gtm.js"]'), function (t) { return (/[?&]id=([^&]+)/.exec(t.src) || [])[1] || ''; });
+    var configured = [].some.call(window.dataLayer, function (a) { return a && a[0] === 'config' && a[1] === ID; });
+    // cookie de mesure limité à 390 jours (CNIL : 13 mois au plus ; Google : 2 ans par défaut)
+    if (!tags.length) {
+      gtag('js', new Date());
+      gtag('config', ID, { cookie_expires: 33696000 });
+      var s = document.createElement('script');
+      s.async = true;
+      s.src = 'https://www.googletagmanager.com/gtag/js?id=' + ID;
+      document.head.appendChild(s);
+    } else if (!configured && tags.every(function (t) { return t && t !== ID && !/^GTM?-/.test(t); })) {
+      gtag('config', ID, { cookie_expires: 33696000 });
+    }
+    var first = true;
+    try { first = !sessionStorage.getItem('bd_kit'); sessionStorage.setItem('bd_kit', '1'); } catch (e) {}
+    if (first) gtag('event', 'bd_kit', { kit_version: '2' });
+    queue.splice(0).forEach(function (q) { gtag('event', q[0], q[1]); });
+  };
+  // à appeler par le bandeau quand le visiteur retire son accord : plus rien ne part ensuite, consentement Google refusé
+  window.bdAnalyticsRevoke = function () {
+    on = false;
+    queue.length = 0;
+    gtag('consent', 'update', { analytics_storage: 'denied' });
+  };
+  // formulaires : à appeler par le site après un envoi réellement réussi, ou quand l'envoi échoue
+  window.bdFormSent = function (name) { send('bd_form_sent', { form_name: clean(name || 'formulaire').slice(0, 40) }); };
+  window.bdFormFailed = function (name) { send('bd_form_failed', { form_name: clean(name || 'formulaire').slice(0, 40) }); };
+  // page introuvable : automatique sur WordPress (classe error404) ou avec <body data-bd-404>, sinon appeler bdNotFound()
+  window.bdNotFound = function () { send('bd_404'); };
+  document.addEventListener('DOMContentLoaded', function () {
+    var b = document.body;
+    if (b && (b.classList.contains('error404') || b.hasAttribute('data-bd-404'))) window.bdNotFound();
+    // WPForms sans AJAX : la page se recharge et affiche sa confirmation
+    if (document.querySelector('.wpforms-confirmation-container-full, .wpforms-confirmation-container')) window.bdFormSent('contact');
+  });
+  // appuis sur un numéro de téléphone ou une adresse e-mail (un clic n'est pas un contact confirmé)
+  document.addEventListener('click', function (e) {
+    var a = e.target && e.target.closest ? e.target.closest('a[href^="tel:"], a[href^="mailto:"]') : null;
+    if (a) send(a.getAttribute('href').indexOf('tel:') === 0 ? 'bd_phone_click' : 'bd_email_click');
+  }, true);
+  // bugs vus par les visiteurs : erreurs JavaScript et fichiers qui ne se chargent pas (5 au plus par page)
+  window.addEventListener('error', function (e) {
+    if (errors >= 5) return;
+    var t = e.target;
+    if (t && t !== window && (t.src || t.href)) { errors++; send('bd_resource_error', { error_message: clean(String(t.src || t.href).split('?')[0]) }); return; }
+    errors++;
+    send('bd_js_error', { error_message: clean(e.message) });
+  }, true);
+  window.addEventListener('unhandledrejection', function (e) {
+    if (errors >= 5) return;
+    errors++;
+    send('bd_js_error', { error_message: clean(e.reason && e.reason.message ? e.reason.message : e.reason) });
+  });
+  // bandeaux courants : Complianz (WordPress) — accord déjà donné ou donné pendant la visite
+  document.addEventListener('cmplz_fire_categories', function (e) {
+    var c = e.detail && e.detail.categories;
+    if (c && c.indexOf('statistics') >= 0) window.bdAnalyticsConsent();
+  });
+  // formulaires des extensions WordPress courantes et rendez-vous Calendly : comptés sans rien ajouter
+  document.addEventListener('wpcf7mailsent', function () { window.bdFormSent('contact'); });
+  document.addEventListener('wpcf7mailfailed', function () { window.bdFormFailed('contact'); });
+  window.addEventListener('message', function (e) {
+    if (e.origin === 'https://calendly.com' && e.data && e.data.event === 'calendly.event_scheduled') window.bdFormSent('rendez-vous');
+  });
+  document.addEventListener('DOMContentLoaded', function () {
+    var $ = window.jQuery;
+    if (!$) return;
+    $(document).on('submit_success', function () { window.bdFormSent('contact'); }); // Elementor
+    $(document).on('wpformsAjaxSubmitSuccess', function () { window.bdFormSent('contact'); }); // WPForms
+    $(document).on('fluentform_submission_success', function () { window.bdFormSent('contact'); }); // Fluent Forms
+  });
+})();
+</script>
+<!-- Le bandeau de consentement appelle bdAnalyticsConsent() quand le visiteur accepte la mesure d'audience
+     (Complianz : automatique), et bdAnalyticsRevoke() s'il retire son accord. -->

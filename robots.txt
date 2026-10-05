@@ -1,0 +1,5 @@
+# Aperçu : rien n'est indexé.
+User-agent: *
+Disallow: /
+
+Sitemap: https://qualiclimsud.fr/sitemap.xml

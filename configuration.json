@@ -1,0 +1,11 @@
+{
+  "_lisezmoi": "Les seules valeurs à changer pour la mise en ligne (STANDARD-SITE.md : identifiant de mesure, balise Search Console, domaine), puis lancer : node outils/fabriquer.mjs",
+  "mode": "apercu",
+  "domaine": "https://qualiclimsud.fr",
+  "baseApercu": "/qualiclim-sud-apercu/",
+  "mesureId": "",
+  "searchConsole": "",
+  "formulaire": "",
+  "slug": "qualiclim-sud",
+  "majContenus": "2026-10-05"
+}

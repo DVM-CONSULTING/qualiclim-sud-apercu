@@ -1,3 +1,6 @@
+/* Polices auto-hébergées (SIL Open Font License 1.1) : aucune requête vers un serveur extérieur. */
+@font-face { font-family: "Manrope"; font-style: normal; font-weight: 400 600; font-display: swap; src: url("../polices/manrope-latin.woff2") format("woff2"); }
+@font-face { font-family: "Azeret Mono"; font-style: normal; font-weight: 500; font-display: swap; src: url("../polices/azeret-mono-500-latin.woff2") format("woff2"); }
 
 /* Verrou de référence : AYOCIN (choisi par David) — structure gardée : canevas clair + encre profonde, larges bandes de couleur,
    une seule famille en graisse 500, titres à l'échelle d'un mur, chiffres géants en Azeret Mono resserré, pilules 20 px avec poche
@@ -28,7 +31,8 @@ a { color: inherit; }
 :focus-visible { outline: 1px solid currentColor; outline-offset: 4px; }
 h1, h2, h3 { font-family: var(--f); font-weight: 500; margin: 0; text-wrap: balance; }
 p { margin: 0; }
-.a-confirmer { opacity: .72; border-bottom: 1px dotted currentColor; }
+/* Ce que le client doit encore fournir : surligné en orange, lisible sur fond clair comme sur fond nuit. */
+.a-confirmer { background: #ffb547; color: #2a1700; font-weight: 500; padding: .06em .38em; border-radius: 4px; -webkit-box-decoration-break: clone; box-decoration-break: clone; text-shadow: none; }
 .utile { font: 500 12px/1.4 var(--f); }
 
 /* Boutons pilules (poche à droite pour la flèche) */
@@ -606,3 +610,80 @@ html.visionneuse-ouverte { overflow: hidden; }
 
 @media (max-width: 480px) { .ouverture .ligne-utile { display: none; } .ouverture h1 { font-size: 22px; } }
 @media (max-width: 400px) { .gros-numero { padding: 18px 20px; } .gros-numero__n { font-size: 8.6vw; } .pilule { white-space: normal; line-height: 1.25; text-align: left; } }
+
+/* ======================================================================================
+   Pages d'information (mentions, confidentialité, CGV, CGU, 404), bandeau cookies, pied
+   ====================================================================================== */
+.page-simple .nav { background: rgba(14,29,51,.94); backdrop-filter: blur(16px) saturate(1.2); -webkit-backdrop-filter: blur(16px) saturate(1.2); border-bottom-color: rgba(244,242,238,.12); }
+.page-simple .nav__liens a { color: inherit; }
+.legal-entete { background: var(--espresso); color: var(--porcelaine); padding: calc(150px + env(safe-area-inset-top, 0px)) var(--g) clamp(56px, 7vw, 96px); }
+.legal-entete .cadre { gap: 18px; }
+.legal-entete h1 { font: 500 clamp(40px, 6.4vw, 92px)/.98 var(--f); letter-spacing: -0.045em; max-width: 16ch; }
+.legal-entete .chapeau { font: 400 17px/1.5 var(--f); max-width: 62ch; opacity: .82; }
+.legal-entete .maj { font: 500 12px/1 var(--f-chiffre); letter-spacing: -0.02em; opacity: .6; }
+.legal-corps { padding: clamp(56px, 7vw, 104px) var(--g) clamp(80px, 9vw, 140px); }
+.legal-grille { max-width: 1320px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 260px) minmax(0, 1fr); gap: 40px 80px; align-items: start; }
+.sommaire { position: sticky; top: 110px; display: grid; gap: 10px; font: 400 14px/1.4 var(--f); }
+.sommaire p { font: 500 12px/1 var(--f) !important; opacity: .55; margin-bottom: 6px; }
+.sommaire a { text-decoration: none; opacity: .8; }
+.sommaire a:hover { opacity: 1; text-decoration: underline; text-underline-offset: 3px; }
+.prose { max-width: 72ch; display: grid; gap: 16px; }
+.prose > section { display: grid; gap: 14px; padding-bottom: 36px; border-bottom: 1px solid color-mix(in srgb, currentColor 14%, transparent); scroll-margin-top: 110px; }
+.prose > section:last-child { border-bottom: 0; }
+.prose h2 { font: 500 clamp(24px, 2.6vw, 32px)/1.15 var(--f); letter-spacing: -0.025em; margin-top: 8px; }
+.prose h3 { font: 500 18px/1.3 var(--f); letter-spacing: -0.01em; margin-top: 6px; }
+.prose p, .prose li, .prose dd, .prose td, .prose th { font: 400 16px/1.65 var(--f); }
+.prose ul, .prose ol { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; }
+.prose a { color: inherit; text-underline-offset: 3px; }
+.prose strong { font-weight: 600; }
+.prose dl { margin: 0; display: grid; gap: 0; }
+.prose dl > div { display: grid; grid-template-columns: minmax(0, 15em) minmax(0, 1fr); gap: 4px 20px; padding: 12px 0; border-bottom: 1px solid color-mix(in srgb, currentColor 10%, transparent); }
+.prose dt { font: 500 14px/1.5 var(--f); opacity: .7; }
+.prose dd { margin: 0; }
+.prose .tableau { overflow-x: auto; }
+.prose table { width: 100%; border-collapse: collapse; min-width: 520px; }
+.prose th, .prose td { text-align: left; vertical-align: top; padding: 10px 12px 10px 0; border-bottom: 1px solid color-mix(in srgb, currentColor 12%, transparent); }
+.prose th { font-weight: 500; font-size: 14px; opacity: .7; }
+.encadre { background: var(--sable); border-radius: 10px; padding: 22px 24px; display: grid; gap: 10px; }
+.encadre p, .encadre li { font-size: 15px !important; }
+.encadre--modele { background: transparent; border: 1px dashed color-mix(in srgb, currentColor 35%, transparent); }
+.prose .note { font-size: 14px !important; opacity: .75; }
+@media (max-width: 960px) { .legal-grille { grid-template-columns: 1fr; } .sommaire { position: static; grid-template-columns: 1fr 1fr; } .sommaire p { grid-column: 1 / -1; } }
+@media (max-width: 560px) { .sommaire { grid-template-columns: 1fr; } .prose dl > div { grid-template-columns: 1fr; } }
+
+/* Page introuvable */
+.introuvable { min-height: 100svh; display: grid; align-content: center; gap: 28px; padding: calc(140px + env(safe-area-inset-top, 0px)) var(--g) 80px; background: var(--espresso); color: var(--porcelaine); }
+.introuvable .cadre { gap: 24px; }
+.introuvable h1 { font: 500 clamp(44px, 8vw, 120px)/.95 var(--f); letter-spacing: -0.05em; max-width: 14ch; }
+.introuvable p { font: 400 18px/1.5 var(--f); max-width: 52ch; opacity: .85; }
+.introuvable__liens { display: flex; flex-wrap: wrap; gap: 12px; }
+.introuvable__code { font: 500 13px/1 var(--f-chiffre); letter-spacing: -0.02em; opacity: .6; }
+
+/* Pied de page : rubriques et informations */
+.pied__colonnes { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.pied__colonnes ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; font: 400 14px/1.5 var(--f); }
+.pied__cookies { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; border-bottom: 1px solid rgba(244,242,238,.3); }
+.pied__entreprise { font-size: 13px !important; opacity: .75; }
+@media (max-width: 1100px) { .pied__colonnes { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 820px) { .pied__colonnes { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 420px) { .pied__colonnes { grid-template-columns: 1fr; } }
+
+/* Bandeau de consentement : refuser aussi simple qu'accepter (CNIL), jamais devant le bouton d'appel */
+.consentement { position: fixed; z-index: 90; left: var(--g); right: var(--g); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); display: flex; justify-content: center; pointer-events: none; }
+.consentement[hidden] { display: none; }
+.consentement__interieur { pointer-events: auto; max-width: 760px; width: 100%; background: var(--porcelaine); color: var(--espresso); border-radius: 10px; padding: 18px 20px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 14px 20px; align-items: center; box-shadow: 0 20px 60px rgba(10,22,40,.35); }
+.consentement__texte { font: 400 14px/1.5 var(--f); }
+.consentement__texte a { color: inherit; text-underline-offset: 3px; }
+.consentement__actions { display: flex; gap: 10px; }
+.consentement__bouton { font: 500 14px/1 var(--f); padding: 12px 20px; border-radius: 20px; border: 1px solid var(--espresso); background: var(--espresso); color: var(--porcelaine); cursor: pointer; min-width: 104px; }
+.consentement__bouton:focus-visible { outline: 2px solid var(--cobalt); outline-offset: 3px; }
+@media (max-width: 620px) { .consentement__interieur { grid-template-columns: 1fr; } .consentement__actions > * { flex: 1; } }
+
+/* Formulaires : retours et mentions */
+.formulaire__rgpd a, .envoi .mention a { color: inherit; text-underline-offset: 3px; }
+.envoi .mention { font: 400 12px/1.5 var(--f) !important; opacity: .75; }
+
+/* Cartes « Vente, pose, après la pose » : les vraies photos, cadrées sur l'appareil */
+.pile__visuel--vente img { object-position: 50% 30%; }
+.pile__visuel--pose img { object-position: 15% 22%; }
+.pile__visuel--apres img { object-position: 40% 35%; }

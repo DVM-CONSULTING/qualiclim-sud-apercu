@@ -189,7 +189,7 @@
     const cartes = $$('.pile__carte');
     cartes.forEach((c, i) => {
       const suivante = cartes[i + 1]; if (!suivante) return;
-      G.to(c, { scale: 0.93, filter: 'brightness(.88)', ease: 'none', scrollTrigger: { trigger: suivante, start: 'top 85%', end: 'top 20%', scrub: true } });
+      G.fromTo(c, { scale: 1, filter: 'brightness(1)' }, { scale: 0.93, filter: 'brightness(0.88)', ease: 'none', scrollTrigger: { trigger: suivante, start: 'top 85%', end: 'top 20%', scrub: true } });
     });
   });
   $$('[data-parallaxe]').forEach(img => G.fromTo(img, { yPercent: -6 }, { yPercent: 6, ease: 'none', scrollTrigger: { trigger: img.parentElement, start: 'top bottom', end: 'bottom top', scrub: true } }));
@@ -342,22 +342,37 @@
   function initFormulaire() {
     const f = $('#formulaire'); if (!f) return;
     const out = $('#f-retour'), bouton = $('.formulaire__envoi', f), lib = $('.formulaire__lib', f);
-    f.addEventListener('submit', e => {
+    const PROJETS = { installation: 'Une installation', remplacement: 'Remplacer un appareil', plusieurs: 'Plusieurs pièces', question: 'Une question' };
+    let enCours = false;
+    f.addEventListener('submit', async e => {
       e.preventDefault();
+      if (enCours) return;
       $$('.flottant', f).forEach(x => x.classList.remove('erreur'));
-      if ($('#f-site').value) return; // champ piège : un robot l'a rempli
-      const nom = $('#f-nom'), tel = $('#f-tel');
+      const nom = $('#f-nom'), tel = $('#f-tel'), mail = $('#f-mail');
       const manque = [];
-      if (!nom.value.trim()) manque.push(nom);
+      if (nom.value.trim().length < 2) manque.push(nom);
       if (!/^[+0-9 ().-]{9,}$/.test(tel.value.trim())) manque.push(tel);
-      if (manque.length) { manque.forEach(x => x.closest('.flottant').classList.add('erreur')); out.textContent = manque.includes(nom) ? 'Indiquez votre nom.' : 'Indiquez un numéro de téléphone valide.'; manque[0].focus(); return; }
-      bouton.classList.add('envoi-en-cours'); lib.textContent = 'Envoi…';
-      // Maquette : aucun envoi. En ligne, le Worker du socle répondra { ok: true } et c'est seulement alors que
-      // bdFormSent sera émis (standard Belle Devanture) ; en cas d'échec, bdFormFailed.
-      setTimeout(() => {
-        bouton.classList.remove('envoi-en-cours'); f.classList.add('envoye'); lib.textContent = 'Demande prête';
-        out.textContent = "Maquette : rien n'est envoyé pour l'instant. En ligne, votre demande nous parviendra directement" + ($('[name=rappel]', f).checked ? ', et nous vous rappellerons comme vous l\'avez demandé.' : '.');
-      }, 1100);
+      if (mail.value.trim() && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(mail.value.trim())) manque.push(mail);
+      if (manque.length) {
+        manque.forEach(x => x.closest('.flottant').classList.add('erreur'));
+        out.textContent = manque[0] === nom ? 'Indiquez votre nom.' : manque[0] === tel ? 'Indiquez un numéro de téléphone valide.' : 'Cette adresse e-mail semble incomplète.';
+        manque[0].focus(); return;
+      }
+      const projet = (f.querySelector('[name=projet]:checked') || {}).value, commune = $('#f-commune').value, rappel = $('[name=rappel]', f).checked;
+      const message = [`Projet : ${PROJETS[projet] || 'non précisé'}`, `Commune : ${commune || 'non précisée'}`, rappel ? 'Souhaite être rappelé·e.' : 'Ne demande pas de rappel.', '', $('#f-msg').value.trim() || '(pas de message)'].join('\n');
+      enCours = true; bouton.classList.add('envoi-en-cours'); lib.textContent = 'Envoi…'; out.textContent = '';
+      const r = window.QualiclimEnvoi ? await window.QualiclimEnvoi.envoyer({ nom: nom.value.trim(), telephone: tel.value.trim(), email: mail.value.trim(), message, site_web: $('#f-site').value }, 'contact') : { ok: false, nonRelie: true };
+      enCours = false; bouton.classList.remove('envoi-en-cours');
+      if (r.ok) {
+        f.classList.add('envoye'); lib.textContent = 'Demande envoyée';
+        out.textContent = 'Merci, votre demande est bien partie.' + (rappel ? ' Nous vous rappelons au numéro indiqué.' : ' Nous vous répondons rapidement.');
+      } else if (r.nonRelie) {
+        lib.textContent = 'Envoyer ma demande';
+        out.textContent = "Aperçu du site : le formulaire sera relié à la mise en ligne, rien n'a été envoyé. En attendant, appelez-nous au 06 34 49 32 49.";
+      } else {
+        lib.textContent = 'Réessayer';
+        out.textContent = (r.erreurs && r.erreurs.length ? r.erreurs.join(' ') + ' ' : "Votre demande n'a pas pu partir. ") + 'Vous pouvez aussi nous appeler au 06 34 49 32 49.';
+      }
     });
   }
 })();
