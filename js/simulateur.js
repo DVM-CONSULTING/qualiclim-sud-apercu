@@ -193,7 +193,7 @@
       ${visite ? `<div class="res__bloc"><h4>Ce qu'un technicien doit voir sur place</h4><ul class="res__liste">${visite}</ul></div>` : ''}
       <div class="res__bloc"><h4>Ce que la pose demande en plus</h4>${supHtml}</div>
       ${alertes ? `<div class="res__bloc"><h4>À vérifier</h4><ul class="res__liste">${alertes}</ul></div>` : ''}
-      <div class="res__bloc"><h4>Prix</h4><p class="res__note">Marques posées : principalement Mitsubishi et Mundoclima.</p>${prix}</div>
+      <div class="res__bloc"><h4>Prix</h4><p class="res__note">Marques posées : principalement Mitsubishi Electric et Mundoclima.</p>${prix}</div>
       <div class="res__bloc"><h4>TVA, aides et secteur</h4><p class="res__note">${esc(r.tva.texte)}</p>
         <p class="res__note">Prime CEE : <span class="a-confirmer">[À CONFIRMER — CLIENT : accompagnement aux primes]</span></p>${zone ? `<p class="res__note">${zone}</p>` : ''}</div>
       <div class="res__mentions">${r.mentionsEstimation.map(m => `<p>${esc(m)}</p>`).join('')}</div>`;
