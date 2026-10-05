@@ -700,13 +700,30 @@ form .pilule { justify-self: start; cursor: pointer; }
   const scene = document.getElementById('scene');
   const portrait = matchMedia('(max-aspect-ratio: 1/1)').matches;
   const v = document.createElement('video');
-  const src = (portrait ? SURVOL.mobile : SURVOL.bureau) + (v.canPlayType('video/mp4; codecs="avc1.640032"') ? '.mp4' : '.webm');
-  v.muted = true; v.defaultMuted = true; v.playsInline = true; v.setAttribute('playsinline', ''); v.preload = 'auto'; v.disablePictureInPicture = true;
+  const h264 = v.canPlayType('video/mp4; codecs="avc1.640028"') || v.canPlayType('video/mp4');
+  const src = (portrait ? SURVOL.mobile : SURVOL.bureau) + (h264 ? '.mp4' : '.webm');
+  v.muted = true; v.defaultMuted = true; v.setAttribute('muted', ''); v.playsInline = true; v.setAttribute('playsinline', ''); v.setAttribute('webkit-playsinline', '');
+  v.preload = 'auto'; v.disablePictureInPicture = true; v.setAttribute('aria-hidden', 'true');
   scene.prepend(v);
   // Le fichier est chargé en entier avant la lecture : se déplacer dans une vidéo à moitié téléchargée saccade.
   fetch(src).then(r => r.ok ? r.blob() : Promise.reject(r.status)).then(b => { v.src = URL.createObjectURL(b); }).catch(() => { v.src = src; });
   let pret = false, courant = 0, enAttente = false;
-  v.addEventListener('loadeddata', () => { pret = true; v.classList.add('pret'); demander(); });
+  // iPhone : une vidéo jamais lancée n'affiche pas l'image qu'on lui demande au défilement, elle reste sur la première.
+  // On la lance une fraction de seconde, muette, puis on la met en pause : dès le chargement, et de nouveau au premier
+  // contact si Safari l'a refusé (mode économie d'énergie).
+  let debloquee = false;
+  const debloquer = () => {
+    if (debloquee || !v.src) return;
+    const essai = v.play();
+    if (essai && essai.then) essai.then(() => { v.pause(); debloquee = true; demander(); }).catch(() => {});
+    else { v.pause(); debloquee = true; }
+  };
+  const premierContact = () => { debloquer(); if (debloquee) ['touchend', 'pointerup', 'click', 'keydown'].forEach(t => removeEventListener(t, premierContact)); };
+  ['touchend', 'pointerup', 'click', 'keydown'].forEach(t => addEventListener(t, premierContact, { passive: true }));
+  v.addEventListener('loadedmetadata', () => { pret = true; debloquer(); demander(); });
+  const montrer = () => { if (!v.classList.contains('pret')) v.classList.add('pret'); };
+  v.addEventListener('loadeddata', () => { montrer(); demander(); });
+  v.addEventListener('seeked', montrer);
   // Vol du logo : du centre du premier écran jusqu'à l'en-tête, sur les 13 premiers pour cent du récit.
   const mhq = document.getElementById('mh-q'), mhn = document.getElementById('mh-nom');
   const sq = document.querySelector('.signe__q'), sn = document.querySelector('.signe__nom');
