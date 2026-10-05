@@ -32,8 +32,9 @@
     if (!hote || !THREE || !webglDispo()) return Promise.resolve(null);
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) return Promise.resolve(null);
     var base = o.base || 'cote/';
-    return fetch(base + 'hauteurs.i16').then(function (r) { if (!r.ok) throw new Error('relief'); return r.arrayBuffer(); })
-      .then(function (buf) { return construire(hote, THREE, new Int16Array(buf), base, o); })
+    // Relief RGE ALTI : grille d'entiers 16 bits, transportée en base64 (format texte, servi partout)
+    return fetch(base + 'hauteurs.txt').then(function (r) { if (!r.ok) throw new Error('relief'); return r.text(); })
+      .then(function (t) { var bin = atob(t.trim()), u = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return construire(hote, THREE, new Int16Array(u.buffer), base, o); })
       .catch(function () { return null; });
   }
 
