@@ -164,11 +164,16 @@ const conditionnels = (html) => html
   .replace(/<!--si:mesure-->([\s\S]*?)<!--\/si:mesure-->/g, (_, x) => MESURE ? x : '')
   .replace(/<!--si:sans-mesure-->([\s\S]*?)<!--\/si:sans-mesure-->/g, (_, x) => MESURE ? '' : x);
 
-// ------------------------------------------------------------------ accueil : seuls les blocs communs changent
+// ------------------------------------------------------------------ version des fichiers : un navigateur recharge tout fichier modifié
+const empreinte = (f) => crypto.createHash('sha256').update(fs.readFileSync(path.join(RACINE, f))).digest('hex').slice(0, 10);
+const VERSIONNES = ['css/site.css', 'css/reversible.css', 'js/site.js', 'js/simulateur.js', 'js/moteur.js', 'js/piece3d.js', 'js/cote.js', 'js/reversible.js', 'js/envoi.js', 'js/commun.js'];
+const versionner = (html) => VERSIONNES.reduce((h, f) => h.replace(new RegExp(`((?:\\.\\./)?${f.replace('.', '\\.')})(\\?v=[0-9a-f]+)?"`, 'g'), `$1?v=${empreinte(f)}"`), html);
+
+// ------------------------------------------------------------------ accueil : seuls les blocs communs et les versions changent
 let accueil = lire('index.html');
 accueil = remplacerBloc(accueil, 'tete', tete({ r: '', chemin: '/', index: true }));
 accueil = remplacerBloc(accueil, 'pied', pied(''));
-ecrire('index.html', accueil);
+ecrire('index.html', versionner(accueil));
 
 // ------------------------------------------------------------------ pages d'information
 for (const p of PAGES) {
@@ -217,7 +222,7 @@ ${corps}
 </body>
 </html>
 `;
-  ecrire(`${p.dossier}/index.html`, html);
+  ecrire(`${p.dossier}/index.html`, versionner(html));
 }
 
 // ------------------------------------------------------------------ page introuvable (servie avec le statut 404 par l'hébergeur)
@@ -254,7 +259,7 @@ ${nav('')}
 <script src="js/commun.js"></script>
 </body>
 </html>
-`.replace(/href="#(simulateur|contact)"/g, 'href="./#$1"'));
+`.replace(/href="#(simulateur|contact)"/g, 'href="./#$1"').replace(/(css\/site\.css|js\/commun\.js)"/g, (m, f) => `${f}?v=${empreinte(f)}"`));
 
 // ------------------------------------------------------------------ référencement et en-têtes
 const urls = ['/', ...PAGES.map(p => `/${p.dossier}/`)];
