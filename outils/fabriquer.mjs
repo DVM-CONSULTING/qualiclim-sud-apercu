@@ -347,7 +347,7 @@ ${PROD ? '' : `
     gzip_types text/css application/javascript text/plain application/json image/svg+xml application/xml;
 
     # Les coulisses du dépôt ne sont jamais servies
-    location ~ (^/\\.|^/outils/|^/contenus/|^/configuration\\.json$|^/_headers$|\\.md$|\\.mjs$) { return 404; }
+    location ~ (^/\\.|^/outils/|^/contenus/|^/outil-stock/|^/configuration\\.json$|^/_headers$|\\.md$|\\.mjs$) { return 404; }
 
     # Vraie page introuvable, avec le statut 404 (FUNC-404-01)
     error_page 404 /404.html;
