@@ -350,6 +350,8 @@ p { margin: 0; }
 .champ { display: grid; gap: 6px; font: 500 13px/1.4 var(--f); max-width: 26rem; }
 .champ input, .flottant input, .flottant textarea, .flottant select { font: 400 16px/1.4 var(--f); color: inherit; background: transparent; border: 0; border-bottom: 1px solid rgba(244,242,238,.28); padding: 10px 0; border-radius: 0; width: 100%; }
 .champ input:focus, .flottant input:focus, .flottant textarea:focus, .flottant select:focus { outline: none; border-bottom-color: var(--porcelaine); }
+/* clavier : un contour en plus du filet, pour que le champ actif se voie sans ambiguïté (A11Y-KBD-01) */
+.champ input:focus-visible, .flottant input:focus-visible, .flottant textarea:focus-visible, .flottant select:focus-visible { outline: 1px solid var(--porcelaine); outline-offset: 4px; }
 .champ input::placeholder { color: inherit; opacity: .35; }
 .curseur { display: flex; align-items: center; gap: 20px; max-width: 34rem; }
 .curseur input[type=range] { flex: 1; accent-color: var(--porcelaine); padding: 0; border: 0; height: 28px; }
@@ -624,7 +626,7 @@ html.visionneuse-ouverte { overflow: hidden; }
 .legal-corps { padding: clamp(56px, 7vw, 104px) var(--g) clamp(80px, 9vw, 140px); }
 .legal-grille { max-width: 1320px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 260px) minmax(0, 1fr); gap: 40px 80px; align-items: start; }
 .sommaire { position: sticky; top: 110px; display: grid; gap: 10px; font: 400 14px/1.4 var(--f); }
-.sommaire p { font: 500 12px/1 var(--f) !important; opacity: .55; margin-bottom: 6px; }
+.sommaire p { font: 500 12px/1 var(--f) !important; opacity: .72; margin-bottom: 6px; }
 .sommaire a { text-decoration: none; opacity: .8; }
 .sommaire a:hover { opacity: 1; text-decoration: underline; text-underline-offset: 3px; }
 .prose { max-width: 72ch; display: grid; gap: 16px; }

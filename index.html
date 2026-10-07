@@ -215,7 +215,7 @@
 </script>
 <!-- /commun:tete -->
 <link rel="preload" as="image" href="img/poster.jpg">
-<link rel="stylesheet" href="css/site.css?v=e62b1c49dc">
+<link rel="stylesheet" href="css/site.css?v=922151ca89">
 <link rel="stylesheet" href="css/reversible.css?v=9c5205fbbe">
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -312,7 +312,7 @@
     <a href="#questions">Questions</a>
     <a href="#contact">Contact</a>
   </nav>
-  <a class="pilule pilule--porcelaine" href="tel:+33634493249" aria-label="Appeler Qualiclim Sud au 06 34 49 32 49" data-magnetique>Appeler<span class="appel__num">&nbsp;· 06&nbsp;34&nbsp;49&nbsp;32&nbsp;49</span></a>
+  <a class="pilule pilule--porcelaine" href="tel:+33634493249" aria-label="Appeler 06 34 49 32 49, Qualiclim Sud" data-magnetique>Appeler<span class="appel__num">&nbsp;· 06&nbsp;34&nbsp;49&nbsp;32&nbsp;49</span></a>
 </header>
 
 <div class="scene" id="scene" aria-hidden="true"><div class="grain" id="grain"></div></div>
@@ -489,7 +489,7 @@
             <p class="etiquette" id="e-piece">Séjour · 25 m²</p>
             <p class="etiquette etiquette--souffle" id="e-souffle"><i></i>Froid et chaud</p>
           </div>
-          <div class="simu__pieces" id="simu-onglets" aria-label="Pièce affichée"></div>
+          <div class="simu__pieces" id="simu-onglets" role="group" aria-label="Pièce affichée"></div>
         </div>
         <form class="simu__panneau" id="simu" novalidate>
           <ol class="simu__etapes" aria-label="Étapes du simulateur">
@@ -504,39 +504,39 @@
               <legend>Votre logement</legend>
               <div class="q"><p class="q__t" id="q-type">C'est</p>
                 <div class="choix" role="radiogroup" aria-labelledby="q-type">
-                  <label><input type="radio" name="type" value="maison" checked><span>Une maison</span></label>
-                  <label><input type="radio" name="type" value="appartement"><span>Un appartement</span></label>
+                  <label><input id="s-type-maison" type="radio" name="type" value="maison" checked><span>Une maison</span></label>
+                  <label><input id="s-type-appartement" type="radio" name="type" value="appartement"><span>Un appartement</span></label>
                 </div></div>
               <div class="q"><p class="q__t" id="q-statut">Vous êtes</p>
                 <div class="choix" role="radiogroup" aria-labelledby="q-statut">
-                  <label><input type="radio" name="statut" value="proprietaire" checked><span>Propriétaire</span></label>
-                  <label><input type="radio" name="statut" value="locataire"><span>Locataire</span></label>
+                  <label><input id="s-statut-proprietaire" type="radio" name="statut" value="proprietaire" checked><span>Propriétaire</span></label>
+                  <label><input id="s-statut-locataire" type="radio" name="statut" value="locataire"><span>Locataire</span></label>
                 </div>
-                <label class="coche" data-si="statut=locataire" hidden><input type="checkbox" name="accordProprietaire"><span>J'ai l'accord écrit de mon propriétaire</span></label>
-                <label class="coche" data-si="type=appartement" hidden><input type="checkbox" name="autorisationCopropriete"><span>La copropriété a déjà donné son accord pour l'unité extérieure</span></label>
+                <label class="coche" data-si="statut=locataire" hidden><input id="s-accordProprietaire" type="checkbox" name="accordProprietaire"><span>J'ai l'accord écrit de mon propriétaire</span></label>
+                <label class="coche" data-si="type=appartement" hidden><input id="s-autorisationCopropriete" type="checkbox" name="autorisationCopropriete"><span>La copropriété a déjà donné son accord pour l'unité extérieure</span></label>
               </div>
               <div class="q"><p class="q__t" id="q-age">Le logement a été achevé il y a</p>
                 <div class="choix" role="radiogroup" aria-labelledby="q-age">
-                  <label><input type="radio" name="age" value="vieux" checked><span>Plus de 2 ans</span></label>
-                  <label><input type="radio" name="age" value="neuf"><span>Moins de 2 ans</span></label>
-                  <label><input type="radio" name="age" value="inconnu"><span>Je ne sais pas</span></label>
+                  <label><input id="s-age-vieux" type="radio" name="age" value="vieux" checked><span>Plus de 2 ans</span></label>
+                  <label><input id="s-age-neuf" type="radio" name="age" value="neuf"><span>Moins de 2 ans</span></label>
+                  <label><input id="s-age-inconnu" type="radio" name="age" value="inconnu"><span>Je ne sais pas</span></label>
                 </div></div>
               <div class="q"><p class="q__t" id="q-iso">L'isolation est plutôt</p>
                 <div class="choix" role="radiogroup" aria-labelledby="q-iso">
-                  <label><input type="radio" name="isolation" value="recente"><span>Récente</span></label>
-                  <label><input type="radio" name="isolation" value="moyenne" checked><span>Moyenne</span></label>
-                  <label><input type="radio" name="isolation" value="ancienne"><span>Ancienne</span></label>
+                  <label><input id="s-isolation-recente" type="radio" name="isolation" value="recente"><span>Récente</span></label>
+                  <label><input id="s-isolation-moyenne" type="radio" name="isolation" value="moyenne" checked><span>Moyenne</span></label>
+                  <label><input id="s-isolation-ancienne" type="radio" name="isolation" value="ancienne"><span>Ancienne</span></label>
                 </div></div>
               <div class="q"><p class="q__t" id="q-etage">Dernier étage ou sous les combles</p>
                 <div class="choix" role="radiogroup" aria-labelledby="q-etage">
-                  <label><input type="radio" name="dernierEtage" value="oui"><span>Oui</span></label>
-                  <label><input type="radio" name="dernierEtage" value="non" checked><span>Non</span></label>
+                  <label><input id="s-dernierEtage-oui" type="radio" name="dernierEtage" value="oui"><span>Oui</span></label>
+                  <label><input id="s-dernierEtage-non" type="radio" name="dernierEtage" value="non" checked><span>Non</span></label>
                 </div></div>
               <div class="q"><p class="q__t" id="q-besoin">Vous voulez surtout</p>
                 <div class="choix" role="radiogroup" aria-labelledby="q-besoin">
-                  <label><input type="radio" name="besoin" value="froid"><span>Rafraîchir</span></label>
-                  <label><input type="radio" name="besoin" value="chaud"><span>Chauffer</span></label>
-                  <label><input type="radio" name="besoin" value="les_deux" checked><span>Les deux</span></label>
+                  <label><input id="s-besoin-froid" type="radio" name="besoin" value="froid"><span>Rafraîchir</span></label>
+                  <label><input id="s-besoin-chaud" type="radio" name="besoin" value="chaud"><span>Chauffer</span></label>
+                  <label><input id="s-besoin-les_deux" type="radio" name="besoin" value="les_deux" checked><span>Les deux</span></label>
                 </div></div>
               <label class="champ" for="s-cp">Code postal<input id="s-cp" name="codePostal" inputmode="numeric" autocomplete="postal-code" maxlength="5" placeholder="83600"></label>
             </fieldset>
@@ -551,46 +551,46 @@
               <legend>L'installation</legend>
               <div class="q"><p class="q__t" id="q-ue">L'unité extérieure irait</p>
                 <div class="choix" role="radiogroup" aria-labelledby="q-ue">
-                  <label><input type="radio" name="emplacementUe" value="sol" checked><span>Au sol</span></label>
-                  <label><input type="radio" name="emplacementUe" value="facade_basse"><span>En façade, à hauteur d'homme</span></label>
-                  <label><input type="radio" name="emplacementUe" value="facade_haute"><span>En façade, en hauteur</span></label>
-                  <label><input type="radio" name="emplacementUe" value="balcon"><span>Sur un balcon</span></label>
-                  <label><input type="radio" name="emplacementUe" value="toiture"><span>En toiture</span></label>
+                  <label><input id="s-emplacementUe-sol" type="radio" name="emplacementUe" value="sol" checked><span>Au sol</span></label>
+                  <label><input id="s-emplacementUe-facade_basse" type="radio" name="emplacementUe" value="facade_basse"><span>En façade, à hauteur d'homme</span></label>
+                  <label><input id="s-emplacementUe-facade_haute" type="radio" name="emplacementUe" value="facade_haute"><span>En façade, en hauteur</span></label>
+                  <label><input id="s-emplacementUe-balcon" type="radio" name="emplacementUe" value="balcon"><span>Sur un balcon</span></label>
+                  <label><input id="s-emplacementUe-toiture" type="radio" name="emplacementUe" value="toiture"><span>En toiture</span></label>
                 </div></div>
               <div class="q"><p class="q__t"><label for="s-dist">Distance entre l'unité intérieure et l'unité extérieure</label></p>
                 <div class="curseur"><input id="s-dist" name="distanceUnitesM" type="range" min="1" max="15" step="1" value="3"><output id="s-dist-v" for="s-dist" class="chiffre">3<span class="u">m</span></output></div>
                 <p class="aide" id="s-dist-aide">Jusqu'à 3 m : pose standard, dos à dos.</p></div>
               <div class="q"><p class="q__t" id="q-acces">Pour y accéder depuis l'extérieur</p>
                 <div class="choix" role="radiogroup" aria-labelledby="q-acces">
-                  <label><input type="radio" name="accesExterieur" value="plain_pied" checked><span>De plain-pied</span></label>
-                  <label><input type="radio" name="accesExterieur" value="echelle"><span>Avec une échelle</span></label>
-                  <label><input type="radio" name="accesExterieur" value="nacelle"><span>Difficile (nacelle, échafaudage)</span></label>
+                  <label><input id="s-accesExterieur-plain_pied" type="radio" name="accesExterieur" value="plain_pied" checked><span>De plain-pied</span></label>
+                  <label><input id="s-accesExterieur-echelle" type="radio" name="accesExterieur" value="echelle"><span>Avec une échelle</span></label>
+                  <label><input id="s-accesExterieur-nacelle" type="radio" name="accesExterieur" value="nacelle"><span>Difficile (nacelle, échafaudage)</span></label>
                 </div></div>
               <div class="q"><p class="q__t" id="q-elec">Une ligne électrique dédiée existe déjà</p>
                 <div class="choix" role="radiogroup" aria-labelledby="q-elec">
-                  <label><input type="radio" name="ligne" value="oui"><span>Oui</span></label>
-                  <label><input type="radio" name="ligne" value="non"><span>Non</span></label>
-                  <label><input type="radio" name="ligne" value="inconnu" checked><span>Je ne sais pas</span></label>
+                  <label><input id="s-ligne-oui" type="radio" name="ligne" value="oui"><span>Oui</span></label>
+                  <label><input id="s-ligne-non" type="radio" name="ligne" value="non"><span>Non</span></label>
+                  <label><input id="s-ligne-inconnu" type="radio" name="ligne" value="inconnu" checked><span>Je ne sais pas</span></label>
                 </div></div>
               <div class="q"><p class="q__t" id="q-eau">L'eau de l'appareil peut s'écouler naturellement (descente, évacuation proche)</p>
                 <div class="choix" role="radiogroup" aria-labelledby="q-eau">
-                  <label><input type="radio" name="condensats" value="gravitaire"><span>Oui</span></label>
-                  <label><input type="radio" name="condensats" value="pompe_requise"><span>Non</span></label>
-                  <label><input type="radio" name="condensats" value="inconnu" checked><span>Je ne sais pas</span></label>
+                  <label><input id="s-condensats-gravitaire" type="radio" name="condensats" value="gravitaire"><span>Oui</span></label>
+                  <label><input id="s-condensats-pompe_requise" type="radio" name="condensats" value="pompe_requise"><span>Non</span></label>
+                  <label><input id="s-condensats-inconnu" type="radio" name="condensats" value="inconnu" checked><span>Je ne sais pas</span></label>
                 </div></div>
               <div class="q"><p class="q__t" id="q-mur">Le mur à traverser est en</p>
                 <div class="choix" role="radiogroup" aria-labelledby="q-mur">
-                  <label><input type="radio" name="typeMur" value="parpaing"><span>Parpaing ou brique</span></label>
-                  <label><input type="radio" name="typeMur" value="beton_banche"><span>Béton</span></label>
-                  <label><input type="radio" name="typeMur" value="pierre"><span>Pierre</span></label>
-                  <label><input type="radio" name="typeMur" value="beton_arme"><span>Béton armé</span></label>
-                  <label><input type="radio" name="typeMur" value="ossature_bois"><span>Bois</span></label>
-                  <label><input type="radio" name="typeMur" value="inconnu" checked><span>Je ne sais pas</span></label>
+                  <label><input id="s-typeMur-parpaing" type="radio" name="typeMur" value="parpaing"><span>Parpaing ou brique</span></label>
+                  <label><input id="s-typeMur-beton_banche" type="radio" name="typeMur" value="beton_banche"><span>Béton</span></label>
+                  <label><input id="s-typeMur-pierre" type="radio" name="typeMur" value="pierre"><span>Pierre</span></label>
+                  <label><input id="s-typeMur-beton_arme" type="radio" name="typeMur" value="beton_arme"><span>Béton armé</span></label>
+                  <label><input id="s-typeMur-ossature_bois" type="radio" name="typeMur" value="ossature_bois"><span>Bois</span></label>
+                  <label><input id="s-typeMur-inconnu" type="radio" name="typeMur" value="inconnu" checked><span>Je ne sais pas</span></label>
                 </div></div>
               <div class="q"><p class="q__t" id="q-depose">Un ancien appareil est à retirer</p>
                 <div class="choix" role="radiogroup" aria-labelledby="q-depose">
-                  <label><input type="radio" name="depose" value="oui"><span>Oui</span></label>
-                  <label><input type="radio" name="depose" value="non" checked><span>Non</span></label>
+                  <label><input id="s-depose-oui" type="radio" name="depose" value="oui"><span>Oui</span></label>
+                  <label><input id="s-depose-non" type="radio" name="depose" value="non" checked><span>Non</span></label>
                 </div></div>
             </fieldset>
 
@@ -602,7 +602,7 @@
                 <label class="champ" for="s-nom">Votre nom<input id="s-nom" name="nom" autocomplete="name"></label>
                 <label class="champ" for="s-mail">Votre e-mail<input id="s-mail" name="email" type="email" autocomplete="email"></label>
                 <label class="champ" for="s-tel">Votre téléphone (facultatif)<input id="s-tel" name="tel" type="tel" autocomplete="tel"></label>
-                <label class="coche"><input type="checkbox" name="rappel"><span>Je demande à être rappelé·e au sujet de ce projet</span></label>
+                <label class="coche"><input id="s-rappel" type="checkbox" name="rappel"><span>Je demande à être rappelé·e au sujet de ce projet</span></label>
                 <p class="mention">Vos informations servent à répondre à votre demande (<a href="confidentialite/">confidentialité</a>). Toute sollicitation téléphonique à des fins commerciales suppose votre consentement préalable (art. L. 223-2 du code de la consommation).</p>
                 <button type="button" class="pilule pilule--porcelaine" id="s-envoyer">Envoyer mon estimation</button>
                 <p class="retour" id="s-retour" role="status"></p>
@@ -860,10 +860,10 @@
           <fieldset class="formulaire__projet">
             <legend>Votre projet</legend>
             <div class="choix choix--clair">
-              <label><input type="radio" name="projet" value="installation" checked><span>Une installation</span></label>
-              <label><input type="radio" name="projet" value="remplacement"><span>Remplacer un appareil</span></label>
-              <label><input type="radio" name="projet" value="plusieurs"><span>Plusieurs pièces</span></label>
-              <label><input type="radio" name="projet" value="question"><span>Une question</span></label>
+              <label><input id="f-projet-installation" type="radio" name="projet" value="installation" checked><span>Une installation</span></label>
+              <label><input id="f-projet-remplacement" type="radio" name="projet" value="remplacement"><span>Remplacer un appareil</span></label>
+              <label><input id="f-projet-plusieurs" type="radio" name="projet" value="plusieurs"><span>Plusieurs pièces</span></label>
+              <label><input id="f-projet-question" type="radio" name="projet" value="question"><span>Une question</span></label>
             </div>
           </fieldset>
           <div class="formulaire__ligne">
@@ -876,7 +876,7 @@
           </div>
           <div class="flottant"><textarea id="f-msg" name="message" rows="3" placeholder=" "></textarea><label for="f-msg">Votre projet en quelques mots</label></div>
           <div class="piege" aria-hidden="true"><label for="f-site">Ne pas remplir</label><input id="f-site" name="site_web" tabindex="-1" autocomplete="off"></div>
-          <label class="coche coche--clair"><input type="checkbox" name="rappel" checked><span>Je demande à être rappelé·e au sujet de ce projet</span></label>
+          <label class="coche coche--clair"><input id="f-rappel" type="checkbox" name="rappel" checked><span>Je demande à être rappelé·e au sujet de ce projet</span></label>
           <p class="formulaire__rgpd">Vos informations servent uniquement à répondre à votre demande : voir la page <a href="confidentialite/">confidentialité</a>. Toute sollicitation téléphonique à des fins commerciales suppose votre consentement préalable (art. L. 223-2 du code de la consommation) : nous ne vous appelons que pour répondre à votre demande.</p>
           <button class="pilule pilule--porcelaine formulaire__envoi" type="submit" data-magnetique><span class="formulaire__lib">Envoyer ma demande</span></button>
           <p class="retour" id="f-retour" role="status"></p>
