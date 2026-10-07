@@ -33,6 +33,9 @@ qualiclimsud.fr {
 	@interne path_regexp interne ^/(\..*|outils/.*|contenus/.*|outil-stock/.*|configuration\.json|_headers|404\.html|.*\.md|.*\.mjs)$
 	error @interne 404
 
+	# Formulaire de contact : relais local (outils/relais-formulaire.py), envoi par Brevo
+	reverse_proxy /f/* 127.0.0.1:8787
+
 	file_server
 
 	# Vraie page introuvable, avec le statut 404 (FUNC-404-01)

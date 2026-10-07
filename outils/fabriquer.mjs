@@ -353,6 +353,9 @@ ${PROD ? '' : `
     error_page 404 /404.html;
     location = /404.html { internal; }
 
+    # Formulaire de contact : relais local (outils/relais-formulaire.py), envoi par Brevo
+    location /f/ { proxy_pass http://127.0.0.1:8787; proxy_set_header Host $host; proxy_set_header X-Forwarded-For $remote_addr; client_max_body_size 64k; }
+
     location ~* ^/(polices|js/vendor)/ { expires 1y; try_files $uri =404; }
     location ~* \\.(webp|jpg|png|ico|mp4|webm)$ { expires 30d; try_files $uri =404; }
     location / { try_files $uri $uri/ =404; }
@@ -393,6 +396,9 @@ ${PROD ? '' : `
 	# Les coulisses du dépôt ne sont jamais servies ; la page 404 ne se demande pas directement
 	@interne path_regexp interne ^/(\\..*|outils/.*|contenus/.*|outil-stock/.*|configuration\\.json|_headers|404\\.html|.*\\.md|.*\\.mjs)$
 	error @interne 404
+
+	# Formulaire de contact : relais local (outils/relais-formulaire.py), envoi par Brevo
+	reverse_proxy /f/* 127.0.0.1:8787
 
 	file_server
 

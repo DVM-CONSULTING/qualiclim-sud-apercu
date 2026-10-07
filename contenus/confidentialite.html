@@ -14,7 +14,7 @@
   <h3>Les appels</h3>
   <p>Le bouton d'appel ouvre l'application téléphone de votre appareil. Aucun appel n'est enregistré.</p>
   <h3>Les journaux techniques</h3>
-  <p>L'hébergeur garde des journaux de connexion (adresse IP, date, page demandée, navigateur) pour la sécurité du site.</p>
+  <p>Le serveur peut garder des journaux techniques (adresse IP, date, page demandée, navigateur) pour la sécurité du site. Pour bloquer les envois abusifs du formulaire, l'adresse IP d'un envoi est gardée en mémoire dix minutes, sans être enregistrée.</p>
   <p class="note">Merci de ne pas envoyer par ces formulaires de coordonnées bancaires ni d'informations sur votre santé.</p>
 </section>
 
@@ -46,7 +46,8 @@
     <li><strong>Demande restée sans suite</strong> : 24 mois après le dernier contact, puis suppression. <span class="a-confirmer">[À CONFIRMER — CLIENT : durée retenue]</span></li>
     <li><strong>Clients</strong> : le temps de la relation et des garanties, puis 24 mois pour les coordonnées. <span class="a-confirmer">[À CONFIRMER — CLIENT : durée retenue]</span></li>
     <li><strong>Factures et pièces comptables</strong> : 10 ans (article L. 123-22 du code de commerce).</li>
-    <li><strong>Journaux techniques</strong> : durée courte fixée par l'hébergeur.</li>
+    <li><strong>Copie de sécurité des demandes envoyées par le site</strong> : 90 jours sur le serveur, puis suppression automatique. Elle sert à renvoyer une demande si l'envoi de l'e-mail a échoué.</li>
+    <li><strong>Journaux techniques</strong> : courte durée, pour la sécurité du site.</li>
 <!--si:mesure-->    <li><strong>Statistiques de fréquentation</strong> : 14 mois chez Google, puis suppression automatique.</li>
 <!--/si:mesure-->  </ul>
 </section>
@@ -55,8 +56,9 @@
   <h2>Qui y a accès</h2>
   <p>Les personnes de Qualiclim Sud qui traitent les demandes et suivent les chantiers. Et, dans la limite de ce qui leur est nécessaire, nos prestataires :</p>
   <ul>
-    <li><strong>Belle Devanture (DVM Consulting)</strong>, qui réalise et maintient le site et achemine les demandes envoyées par le site, en qualité de sous-traitant ;</li>
-    <li><strong>l'hébergeur du site</strong> : Cloudflare, Inc. <span class="a-confirmer">[À CONFIRMER — DAVID : hébergeur et service d'envoi des e-mails du formulaire]</span> ;</li>
+    <li><strong>Belle Devanture (DVM Consulting)</strong>, qui réalise et maintient le site et le serveur qui le fait fonctionner, en qualité de sous-traitant ;</li>
+    <li><strong>OVH SAS</strong> (Roubaix, France), qui héberge ce serveur ;</li>
+    <li><strong>Brevo (Sendinblue SAS)</strong> (Paris, France), qui transmet par e-mail les demandes envoyées par le site ;</li>
     <li>le fournisseur de messagerie de l'entreprise et son logiciel de devis et de facturation <span class="a-confirmer">[À CONFIRMER — CLIENT : lesquels]</span>.</li>
 <!--si:mesure-->    <li><strong>Google Ireland Limited</strong> (Google Analytics), seulement si vous acceptez la mesure d'audience.</li>
 <!--/si:mesure-->  </ul>
