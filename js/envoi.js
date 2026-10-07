@@ -9,6 +9,8 @@
  * Standard Belle Devanture : bdFormSent(nom) SEULEMENT après la réponse { ok: true } ; bdFormFailed(nom) sinon.
  * Tant que l'adresse n'est pas renseignée, rien n'est envoyé et la page le dit : on ne fait jamais croire
  * qu'une demande est partie.
+ * credentials 'same-origin' : un relais sur le domaine du site (VPS) reçoit le mot de passe de l'aperçu
+ * comme le reste de la page ; un relais sur un autre domaine (Worker) ne reçoit jamais d'identifiants.
  */
 (() => {
   'use strict';
@@ -24,7 +26,7 @@
     const ctrl = typeof AbortController === 'function' ? new AbortController() : null;
     const minuteur = ctrl ? setTimeout(() => ctrl.abort(), 15000) : 0;
     try {
-      const r = await fetch(`${adresse}/f/${encodeURIComponent(slug)}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(corps), signal: ctrl ? ctrl.signal : undefined, credentials: 'omit' });
+      const r = await fetch(`${adresse}/f/${encodeURIComponent(slug)}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(corps), signal: ctrl ? ctrl.signal : undefined, credentials: 'same-origin' });
       let donnees = null; try { donnees = await r.json(); } catch (e) { donnees = null; }
       if (r.ok && donnees && donnees.ok === true) { signal('bdFormSent', nom); return { ok: true }; }
       signal('bdFormFailed', nom);
