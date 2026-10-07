@@ -23,6 +23,8 @@
   async function envoyer(champs, nom) {
     if (!adresse || !slug) return { ok: false, nonRelie: true };
     const corps = { nom: champs.nom || '', telephone: champs.telephone || '', email: champs.email || '', message: champs.message || '', _slug: slug, _ts: String(debut), site_web: champs.site_web || '' };
+    // facultatif, pour un e-mail mieux rangé (le relais du VPS les lit, le Worker les ignore) : le message reste complet
+    if (champs.details) Object.assign(corps, { formulaire: nom, rappel: Boolean(champs.rappel), details: champs.details, note: champs.note || '' });
     const ctrl = typeof AbortController === 'function' ? new AbortController() : null;
     const minuteur = ctrl ? setTimeout(() => ctrl.abort(), 15000) : 0;
     try {
