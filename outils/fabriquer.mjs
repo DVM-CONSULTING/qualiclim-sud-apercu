@@ -111,7 +111,7 @@ function nav(r) {
   <nav class="nav__liens" aria-label="Rubriques">
     ${RUBRIQUES.map(([id, t]) => `<a href="${r}#${id}">${t}</a>`).join('\n    ')}
   </nav>
-  <a class="pilule pilule--porcelaine" href="tel:+33634493249" aria-label="Appeler Qualiclim Sud au 06 34 49 32 49">Appeler<span class="appel__num">&nbsp;· 06&nbsp;34&nbsp;49&nbsp;32&nbsp;49</span></a>
+  <a class="pilule pilule--porcelaine" href="tel:+33634493249" aria-label="Appeler 06 34 49 32 49, Qualiclim Sud">Appeler<span class="appel__num">&nbsp;· 06&nbsp;34&nbsp;49&nbsp;32&nbsp;49</span></a>
 </header>`;
 }
 
