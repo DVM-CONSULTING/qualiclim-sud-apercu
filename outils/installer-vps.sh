@@ -11,7 +11,9 @@
 #   4. obtient le certificat HTTPS gratuit (Let's Encrypt), renouvelé automatiquement ;
 #   5. pose la configuration fabriquée avec le site (en-têtes de sécurité, page 404, www → sans www) ;
 #   6. en mode aperçu : protège le site par un mot de passe, affiché une seule fois à la fin ;
-#   7. met le site à jour tout seul toutes les 5 minutes depuis GitHub (les fichiers du site, jamais la configuration).
+#   7. installe le relais du formulaire (envoi par Brevo) : la clé API est demandée ici, sur le serveur, et n'est
+#      gardée que dans /etc/qualiclim-relais.env (lisible par root seulement) ;
+#   8. met le site à jour tout seul toutes les 5 minutes depuis GitHub (les fichiers du site, jamais la configuration).
 set -euo pipefail
 
 DOMAINE="qualiclimsud.fr"
@@ -32,7 +34,7 @@ ok()    { printf '  ✔ %s\n' "$1"; }
 [ "$(id -u)" -eq 0 ] || stop "Lance la commande avec sudo."
 command -v apt-get >/dev/null || stop "Ce script est prévu pour Debian ou Ubuntu. Envoie ce message à Claude."
 
-etape "1/7 — Le domaine pointe-t-il vers ce serveur ?"
+etape "1/8 — Le domaine pointe-t-il vers ce serveur ?"
 command -v curl >/dev/null || { apt-get update -q && apt-get install -y -q curl; }
 IP4=$(curl -4 -fsS --max-time 10 https://api.ipify.org || true)
 IP6=$(curl -6 -fsS --max-time 10 https://api64.ipify.org || true)
@@ -49,7 +51,7 @@ if [ -z "$IP4" ]; then stop "Impossible de connaître l'adresse de ce serveur (a
 if [ -n "$PB" ]; then stop "Le domaine ne pointe pas encore vers ce serveur. À faire :${PB}"$'\n'"  Puis attendre 15 à 60 minutes et relancer la même commande."; fi
 ok "le domaine pointe bien ici"
 
-etape "2/7 — Logiciels nécessaires"
+etape "2/8 — Logiciels nécessaires"
 for s in apache2 httpd; do
   if systemctl is-active --quiet "$s" 2>/dev/null; then stop "$s fonctionne déjà sur ce serveur : je ne l'installe pas par-dessus. Envoie ce message à Claude."; fi
 done
@@ -72,7 +74,7 @@ if [ -n "$MANQUE" ]; then apt-get update -q && DEBIAN_FRONTEND=noninteractive ap
 if [ "$SERVEUR" = "nginx" ]; then systemctl enable --now nginx >/dev/null 2>&1 || true; fi
 ok "serveur web : $SERVEUR ; git présent"
 
-etape "3/7 — Récupération du site"
+etape "3/8 — Récupération du site"
 if [ -d "$RACINE/.git" ]; then
   git -C "$RACINE" fetch -q origin "$BRANCHE" && git -C "$RACINE" reset -q --hard "origin/$BRANCHE"
 else
@@ -86,10 +88,10 @@ NOUVEAU_MDP=""
 nouveau_mdp() { openssl rand -base64 18 | tr -dc 'A-Za-z0-9' | head -c 16; }
 
 if [ "$SERVEUR" = "caddy" ]; then
-  etape "4/7 — Certificat HTTPS"
+  etape "4/8 — Certificat HTTPS"
   ok "Caddy obtient et renouvelle le certificat tout seul"
 
-  etape "5/7 — Configuration du site (Caddy)"
+  etape "5/8 — Configuration du site (Caddy)"
   CCONF="/etc/caddy/qualiclimsud.caddy"
   ANCIEN_HASH=""
   if [ -f "$CCONF" ]; then ANCIEN_HASH=$(awk '$1=="qualiclim"{print $2; exit}' "$CCONF" || true); fi
@@ -97,7 +99,7 @@ if [ "$SERVEUR" = "caddy" ]; then
   SAUVE_C=$(mktemp); if [ -f "$CCONF" ]; then cp "$CCONF" "$SAUVE_C"; else : > "$SAUVE_C"; fi
   cp "$RACINE/outils/caddy-qualiclimsud.caddy" "$CCONF"
 
-  etape "6/7 — Mot de passe de l'aperçu"
+  etape "6/8 — Mot de passe de l'aperçu"
   if grep -q "__EMPREINTE_MOT_DE_PASSE__" "$CCONF"; then
     HASH="$ANCIEN_HASH"
     if [ -z "$HASH" ]; then NOUVEAU_MDP=$(nouveau_mdp); HASH=$(caddy hash-password --plaintext "$NOUVEAU_MDP"); fi
@@ -115,7 +117,7 @@ if [ "$SERVEUR" = "caddy" ]; then
   systemctl reload caddy
   ok "Caddy rechargé (les autres sites continuent de fonctionner)"
 else
-  etape "4/7 — Certificat HTTPS"
+  etape "4/8 — Certificat HTTPS"
   mkdir -p "$ACME"
   if [ ! -f "/etc/letsencrypt/live/${DOMAINE}/fullchain.pem" ]; then
     # configuration provisoire : seulement de quoi prouver à Let's Encrypt que le domaine est ici
@@ -129,14 +131,14 @@ else
   fi
   ok "certificat valable (renouvelé automatiquement par certbot)"
 
-  etape "5/7 — Configuration du site (nginx)"
+  etape "5/8 — Configuration du site (nginx)"
   SAUVE=""
   if [ -f "$CONF" ]; then SAUVE=$(mktemp); cp "$CONF" "$SAUVE"; fi
   cp "$RACINE/outils/nginx-qualiclimsud.conf" "$CONF"
   sans_ipv6 "$CONF"
   ln -sf "$CONF" "/etc/nginx/sites-enabled/${DOMAINE}"
 
-  etape "6/7 — Mot de passe de l'aperçu"
+  etape "6/8 — Mot de passe de l'aperçu"
   if grep -q "auth_basic_user_file" "$CONF"; then
     if [ ! -s "$MDP" ]; then
       NOUVEAU_MDP=$(nouveau_mdp)
@@ -155,7 +157,96 @@ else
   ok "nginx rechargé"
 fi
 
-etape "7/7 — Mise à jour automatique"
+etape "7/8 — Relais du formulaire (envoi par Brevo)"
+RENV="/etc/qualiclim-relais.env"
+install -d -m 755 /usr/local/lib/qualiclim
+install -m 755 "$RACINE/outils/relais-formulaire.py" /usr/local/lib/qualiclim/relais-formulaire.py
+if [ ! -s "$RENV" ]; then
+  CLE_BREVO=""; DEST="contact@${DOMAINE}"; COPIE_A=""
+  if { : < /dev/tty; } 2>/dev/null; then
+    printf '  Clé API Brevo (Brevo › SMTP & API › Clés API). Elle ne s’affiche pas pendant la saisie ; Entrée seule pour passer : ' > /dev/tty
+    read -r -s CLE_BREVO < /dev/tty || true; echo > /dev/tty
+    printf '  Adresse qui reçoit les demandes [%s] : ' "$DEST" > /dev/tty
+    read -r REPONSE < /dev/tty || true
+    if [ -n "${REPONSE:-}" ]; then DEST="$REPONSE"; fi
+    printf '  Copie cachée à l’agence (facultatif, Entrée pour aucune) : ' > /dev/tty
+    read -r COPIE_A < /dev/tty || true
+  fi
+  case "$DEST" in *@*.*) ;; *) stop "Adresse de réception invalide : $DEST" ;; esac
+  if [ -n "$CLE_BREVO" ]; then
+    ( umask 077
+      printf 'BREVO_API_KEY=%s\nDESTINATAIRE=%s\nEXPEDITEUR=formulaire@%s\nNOM_EXPEDITEUR=Site Qualiclim Sud\nCOPIE=%s\nSLUG=qualiclim-sud\nENTREPRISE=Qualiclim Sud\nORIGINES=https://%s https://www.%s\n' \
+        "$CLE_BREVO" "$DEST" "$DOMAINE" "$COPIE_A" "$DOMAINE" "$DOMAINE" > "$RENV" )
+    chmod 600 "$RENV"
+  fi
+fi
+if [ -s "$RENV" ]; then
+  id qualiclim-relais >/dev/null 2>&1 || useradd --system --no-create-home --shell /usr/sbin/nologin qualiclim-relais
+  cat > /etc/systemd/system/qualiclim-relais.service <<'UNITE'
+[Unit]
+Description=Relais du formulaire Qualiclim Sud (envoi par Brevo)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+ExecStart=/usr/bin/python3 -I /usr/local/lib/qualiclim/relais-formulaire.py
+EnvironmentFile=/etc/qualiclim-relais.env
+User=qualiclim-relais
+StateDirectory=qualiclim-relais
+StateDirectoryMode=0700
+Restart=always
+RestartSec=3
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+[Install]
+WantedBy=multi-user.target
+UNITE
+  cat > /etc/systemd/system/qualiclim-relais-relance.service <<'UNITE'
+[Unit]
+Description=Relais Qualiclim Sud : renvoi des demandes en attente
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 -I /usr/local/lib/qualiclim/relais-formulaire.py --relancer
+EnvironmentFile=/etc/qualiclim-relais.env
+User=qualiclim-relais
+StateDirectory=qualiclim-relais
+StateDirectoryMode=0700
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+UNITE
+  cat > /etc/systemd/system/qualiclim-relais-relance.timer <<'UNITE'
+[Unit]
+Description=Relais Qualiclim Sud : renvoi toutes les 5 minutes
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+
+[Install]
+WantedBy=timers.target
+UNITE
+  systemctl daemon-reload
+  systemctl enable -q --now qualiclim-relais.service qualiclim-relais-relance.timer
+  systemctl restart qualiclim-relais.service
+  SANTE=""
+  for _ in 1 2 3 4 5; do SANTE=$(curl -s --max-time 3 http://127.0.0.1:8787/sante || true); [ -n "$SANTE" ] && break; sleep 1; done
+  case "$SANTE" in *'"ok": true'*) ok "relais en service ($(grep '^DESTINATAIRE=' "$RENV" | cut -d= -f2) recevra les demandes)" ;;
+    *) stop "Le relais ne démarre pas. Envoie à Claude le résultat de : sudo journalctl -u qualiclim-relais -n 30 --no-pager" ;; esac
+else
+  ok "relais non installé (pas de clé Brevo) : relance la même commande quand tu l'auras, le reste du site fonctionne"
+fi
+
+etape "8/8 — Mise à jour automatique"
 cat > /usr/local/bin/qualiclim-maj <<EOF
 #!/usr/bin/env bash
 # Met à jour les fichiers du site Qualiclim Sud depuis GitHub (jamais la configuration du serveur web).
