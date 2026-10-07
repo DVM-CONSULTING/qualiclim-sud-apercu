@@ -552,7 +552,7 @@ kbd{font-family:var(--f-num);font-size:10.5px;padding:2px 6px;border:1px solid v
 .kcol:nth-child(4) header>span:first-child::before{background:#0e8f9a}
 .kcol:nth-child(5) header>span:first-child::before{background:var(--ok)}
 .kcard{box-shadow:0 1px 2px rgba(14,29,51,.06)}
-.presets{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.presets{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
 .preset{display:flex;flex-direction:column;gap:6px;text-align:left;border:1.5px solid var(--line);border-radius:14px;padding:16px;background:var(--raised);color:inherit;transition:border-color 160ms,background-color 160ms,transform 160ms}
 button.preset:hover{border-color:var(--line-strong);transform:translateY(-1px)}
 .preset.on{border-color:var(--c1);background:var(--chip)}
@@ -922,6 +922,9 @@ let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 214748364
 /* ================== Données fictives ================== */
 const DEPOTS = { FRE:'Fréjus', NIC:'Nice' };
 const CATS = { UI:'Unités intérieures', UE:'Unités extérieures', MX:'Multisplits', ACC:'Accessoires', CON:'Consommables', FLU:'Fluides' };
+/* Types de produits : ceux de base, plus ceux tapés dans une fiche article (la clé est alors le libellé). */
+const catName = k => CATS[k] || k;
+const cats = () => Object.assign({}, CATS, Object.fromEntries(Object.values(typeof ART === 'object' ? ART : {}).filter(a => a.cat && !CATS[a.cat]).map(a => [a.cat, a.cat])));
 const GWP = { R32:675, R410A:2088 }; // potentiel de réchauffement (règlement F-gaz)
 
 const A = (id, ref, nom, marque, cat, prix, seuil, serie, stock, unite = 'u.') => ({id, ref, nom, marque, cat, prix, seuil, serie, stock, unite, ean: '200' + String(1000000 + Number(id.slice(1)) * 7919).slice(-9)});
@@ -1425,7 +1428,7 @@ function formArticle(id, pre) {
   openDrawer(dh(id ? 'Modifier l\u2019article' : 'Nouvel article', id ? esc(a.nom) : 'Ajouter au catalogue') + `<div class="drawer-b"><form class="form" id="artForm" data-art="${id || ''}" autocomplete="off" novalidate>
     <div class="field"><label for="ar-nom">Désignation *</label><input id="ar-nom" ${fv(0, a.nom)} placeholder="Ex. : Unité murale 2,5 kW"><span class="help">Indiquez la puissance sous la forme « 2,5 kW » : elle sert aux propositions de matériel.</span></div>
     <div class="two"><div class="field"><label for="ar-marque">Marque</label><input id="ar-marque" list="ar-marques" ${fv(0, a.marque === '—' ? '' : a.marque)} placeholder="Choisissez ou tapez une marque"><datalist id="ar-marques">${[...new Set(ARTICLES.map(x => x.marque).filter(x => x && x !== '—'))].map(x => `<option value="${esc(x)}">`).join('')}</datalist><span class="help">Laissez vide pour un article générique.</span></div>
-    <div class="field"><label for="ar-cat">Catégorie</label><select id="ar-cat">${Object.entries(CATS).map(([k, t]) => `<option value="${k}" ${a.cat === k ? 'selected' : ''}>${t}</option>`).join('')}</select></div></div>
+    <div class="field"><label for="ar-cat">Catégorie (type de produit)</label><input id="ar-cat" list="ar-cats" maxlength="60" value="${esc(a.cat ? catName(a.cat) : '')}" placeholder="Choisissez ou tapez un nouveau type"><datalist id="ar-cats">${Object.values(cats()).map(t => `<option value="${esc(t)}">`).join('')}</datalist><span class="help">Un nouveau type tapé ici est proposé ensuite partout.</span></div></div>
     <div class="two"><div class="field"><label for="ar-ref">Référence *</label><input id="ar-ref" ${fv(0, a.ref)}></div><div class="field"><label for="ar-ean">Code-barres</label><input id="ar-ean" inputmode="numeric" ${fv(0, a.ean)}></div></div>
     <div class="field"><label for="ar-prix">Prix d'achat HT</label><input id="ar-prix" inputmode="decimal" ${fv(0, a.prix)}></div>
     <div class="field"><label>Par dépôt</label><div class="depot-lines">${Object.entries(DEPOTS).map(([k, n]) => `<div class="dl"><b>${esc(n)}</b><div class="field"><label for="ar-s-${k}">Seuil d'alerte</label><input id="ar-s-${k}" inputmode="numeric" ${fv(0, a.seuil[k] || 0)}></div>${id ? '' : `<div class="field"><label for="ar-q-${k}">Stock de départ</label><input id="ar-q-${k}" inputmode="numeric" placeholder="0"></div>`}</div>`).join('')}</div><span class="help">Seuil d'alerte : en dessous, l'article passe « à commander ».</span></div>
@@ -1439,7 +1442,7 @@ function saveArticle(f) {
   const g = id => document.getElementById(id).value.trim(), id = f.dataset.art;
   const nom = g('ar-nom'), ref = g('ar-ref');
   if (!nom || !ref) return toast('La désignation et la référence sont obligatoires.');
-  const data = {nom, ref, marque: g('ar-marque') || '—', cat: g('ar-cat'), ean: g('ar-ean'), prix: parseFloat(g('ar-prix').replace(',', '.')) || 0, seuil: Object.fromEntries(Object.keys(DEPOTS).map(k => [k, parseInt(g('ar-s-' + k), 10) || 0])), serie: document.getElementById('ar-serie').checked};
+  const data = {nom, ref, marque: g('ar-marque') || '—', cat: (t => (Object.entries(CATS).find(([, v]) => v.toLowerCase() === t.toLowerCase()) || [t || 'ACC'])[0])(g('ar-cat').trim()), ean: g('ar-ean'), prix: parseFloat(g('ar-prix').replace(',', '.')) || 0, seuil: Object.fromEntries(Object.keys(DEPOTS).map(k => [k, parseInt(g('ar-s-' + k), 10) || 0])), serie: document.getElementById('ar-serie').checked};
   const m = nom.match(/(\d),(\d) kW/); data.kw = m ? Number(m[1] + '.' + m[2]) : null;
   if (id) Object.assign(ART[id], data);
   else { const nid = 'a' + (Date.now() % 1e7), zero = () => Object.fromEntries(Object.keys(DEPOTS).map(k => [k, 0])); const a = Object.assign({id: nid, unite:'u.', stock: zero(), archived:false}, data); ARTICLES.push(a); ART[nid] = a; S.stock[nid] = zero(); S.enCommande[nid] = zero();
@@ -1628,7 +1631,7 @@ const VIEWS = {
   maintenance:{t:'Maintenance', i:'tool', roles:['admin']}
 };
 Object.entries(VIEWS).forEach(([k, v]) => { if (v.roles.includes('dirigeant') && !['reglages','depots','equipe'].includes(k)) ['admin','gestionnaire'].forEach(r => { if (!v.roles.includes(r)) v.roles.push(r); }); });
-const viewOn = k => !((k === 'affaires' && !on('affaires')) || (k === 'fluides' && !on('fluides')) || (k === 'scanner' && !on('scan')));
+const viewOn = k => !((k === 'clients' && !on('clients')) || (k === 'affaires' && !on('affaires')) || (k === 'fluides' && !on('fluides')) || (k === 'scanner' && !on('scan')));
 const ROLES = [{k:'admin', t:'Admin maintenance'}, {k:'dirigeant', t:'Dirigeant'}, {k:'gestionnaire', t:'Gestionnaire (salarié)'}, {k:'responsable', t:'Responsable de dépôt'}, {k:'technicien', t:'Technicien'}];
 
 function renderChrome() {
@@ -1639,7 +1642,7 @@ function renderChrome() {
   const nDone = MISSIONS.filter(m => UI.done[m.k]).length, nTrash = (S.trash || []).length;
   document.getElementById('nav').innerHTML = `<div class="lbl">${UI.role === 'technicien' ? 'Terrain' : 'Pilotage'}</div>` + items.map(([k, v]) =>
     `<button data-go="${k}" ${UI.view === k ? 'aria-current="page"' : ''}>${ic(v.i)}<span>${v.t}</span>${counts[k] ? `<span class="count ${k === 'stock' ? 'alert' : ''}" title="${k === 'stock' ? 'articles à commander' : 'nouvelles demandes'}">${counts[k]}</span>` : ''}</button>`).join('')
-    + `<div class="lbl">Actions rapides</div>${UI.role !== 'technicien' ? `<button data-act="newaff">${ic('plus')}<span>Nouvelle affaire</span></button><button data-act="newclient">${ic('user')}<span>Nouveau client</span></button>` : ''}<button data-act="newmove">${ic('move')}<span>Mouvement de stock</span></button>`
+    + `<div class="lbl">Actions rapides</div>${UI.role !== 'technicien' ? `${on('affaires') ? `<button data-act="newaff">${ic('plus')}<span>Nouvelle affaire</span></button>` : ''}${on('clients') ? `<button data-act="newclient">${ic('user')}<span>Nouveau client</span></button>` : ''}` : ''}<button data-act="newmove">${ic('move')}<span>Mouvement de stock</span></button>`
     + `<div class="lbl">Aide</div><button data-go="aide" ${UI.view === 'aide' ? 'aria-current="page"' : ''}>${ic('book')}<span>Formation</span><span class="count">${nDone}/${MISSIONS.length}</span></button>${UI.role !== 'technicien' ? `<button data-go="corbeille" ${UI.view === 'corbeille' ? 'aria-current="page"' : ''}>${ic('trash')}<span>Corbeille</span>${nTrash ? `<span class="count">${nTrash}</span>` : ''}</button>` : ''}${(can('depots') || can('users') || can('settings')) ? `<div class="lbl">Administration</div>` + [['depots','depots'],['equipe','users'],['reglages','settings'],['maintenance','maint']].filter(([k, pm]) => can(pm)).map(([k]) => `<button data-go="${k}" ${UI.view === k ? 'aria-current="page"' : ''}>${ic(VIEWS[k].i)}<span>${VIEWS[k].t}</span>${k === 'maintenance' && errors24() ? `<span class="count alert">${errors24()}</span>` : ''}</button>`).join('') : ''}`;
   document.getElementById('roles').innerHTML = `<label class="rolepick" for="roleSel"><span>Démo · voir en tant que</span><select id="roleSel">${ROLES.filter(r => r.k !== 'technicien' || on('tech')).map(r => `<option value="${r.k}" ${UI.role === r.k ? 'selected' : ''}>${r.t}</option>`).join('')}</select></label>`;
   document.documentElement.classList.toggle('no-delete', !can('delete'));
@@ -1648,7 +1651,7 @@ function renderChrome() {
   dsw.innerHTML = Object.entries(DEPOTS).map(([k, t]) => `<button data-depot="${k}" aria-pressed="${UI.depot === k}">${t}</button>`).join('');
   const tabs = UI.role === 'technicien'
     ? [['journee','Journée','site'],['techstock','Stock','box'],on('scan') ? ['scanner','Scanner','scan'] : ['act:sortie','Sortir','out'],on('scan') ? ['act:sortie','Sortir','out'] : ['aide','Aide','book'],['act:retour','Rendre','back']]
-    : [['accueil','Accueil','board'],on('affaires') ? ['affaires','Affaires','flag'] : ['clients','Clients','users'],on('scan') ? ['scanner','Scanner','scan'] : ['act:search','Chercher','search'],['stock','Stock','box'],['more','Plus','more']];
+    : [['accueil','Accueil','board'],on('affaires') ? ['affaires','Affaires','flag'] : on('clients') ? ['clients','Clients','users'] : ['act:newmove','Mouvement','move'],on('scan') ? ['scanner','Scanner','scan'] : ['act:search','Chercher','search'],['stock','Stock','box'],['more','Plus','more']];
   document.getElementById('tabbar').innerHTML = tabs.map(([k, t, i]) => k === 'scanner'
     ? `<button class="scanbtn" data-go="scanner" ${UI.view === 'scanner' ? 'aria-current="page"' : ''}><span class="ic">${ic(i, 24)}</span>${t}</button>`
     : k === 'act:search' ? `<button class="scanbtn" id="cmdTab"><span class="ic">${ic(i, 24)}</span>${t}</button>` : k.startsWith('act:') ? `<button data-act="${k.slice(4)}">${ic(i, 22)}${t}</button>`
@@ -1781,7 +1784,7 @@ function affCard(a) {
 }
 function viewAffaires() {
   const deps = visibleDepots(), q = UI.q.trim().toLowerCase();
-  const list = S.aff.filter(a => deps.includes(a.depot) && a.stage !== 'perdu' && (on('demandes') || a.source !== 'site') && (!q || (a.id + clientName(a) + a.titre + clientVille(a)).toLowerCase().includes(q)))
+  const list = S.aff.filter(a => deps.includes(a.depot) && a.stage !== 'perdu' && (on('demandes') || a.source !== 'site') && (!q || (a.id + clientName(a) + a.titre + clientVille(a) + (a.devisRef || '') + (a.factureRef || '')).toLowerCase().includes(q)))
     .filter(a => a.stage !== 'pose' || a.facture === false || dayDiff(a.date) > -45);
   const lost = S.aff.filter(a => a.stage === 'perdu' && deps.includes(a.depot)).length;
   return `
@@ -1826,6 +1829,7 @@ function drawerAffaire(id) {
     <div class="next"><div class="lbl">Prochaine étape</div><p>${ns.txt}</p>${ns.btns ? `<div class="btnrow">${ns.btns}</div>` : ''}</div>
     ${manque.length ? `<div class="note warn"><b>Matériel manquant au dépôt de ${DEPOTS[a.depot]}</b> : ${manque.map(m => esc(ART[m.art].nom)).join(', ')}.</div>` : ''}
     ${a.montant && showPrices() ? `<dl class="kv"><dt>Devis</dt><dd><span class="qty">${eur(a.montant)}</span> HT <span class="fict">fictif</span>${a.devisDate ? ` · envoyé le ${fShort(a.devisDate)}` : ''}</dd>${a.date ? `<dt>Intervention</dt><dd>${fDate(a.date)} · ${a.tech}</dd>` : ''}</dl>` : a.date ? `<dl class="kv"><dt>Intervention</dt><dd>${fDate(a.date)} · ${a.tech}</dd></dl>` : ''}
+    ${docsBlock(a)}
     ${d ? demandeBlock(d) : ''}
     ${a.mat.length ? `<section><div class="sec-h"><h2>Matériel</h2><span class="mute" style="font-size:12.5px">${a.mat.every(m => m.etat === 'sorti') ? 'tout est sorti' : 'réservé au dépôt'}</span></div>
       <div class="ledger-wrap"><table class="ledger"><thead><tr><th>Article</th><th class="r">Qté</th><th>État</th></tr></thead><tbody>${a.mat.map(m => `<tr><td><span class="art-name">${esc(ART[m.art].nom)}</span><span class="art-meta"><span class="tag">${ART[m.art].ref}</span>${m.sns.map(s => `<span class="tag">${s}</span>`).join('')}</span></td><td class="r"><span class="qty">${m.qte}</span></td><td><span class="pill ${m.etat === 'sorti' ? 'ok' : manque.includes(m) ? 'crit' : 'plain'}">${m.etat === 'sorti' ? 'Sorti' : manque.includes(m) ? 'Manquant' : 'Réservé'}</span></td></tr>`).join('')}</tbody></table></div></section>` : ''}
@@ -1861,7 +1865,26 @@ function formDevis(a) {
     <div class="field"><label for="dv-nom">Nom du client</label><input id="dv-nom" value="${esc(c.nom || '')}" required></div>
     <div class="two"><div class="field"><label for="dv-tel">Téléphone</label><input id="dv-tel" value="${esc(c.tel || '')}" inputmode="tel"></div><div class="field"><label for="dv-ville">Commune</label><input id="dv-ville" value="${esc(/^\d/.test(c.ville || '') ? '' : c.ville || '')}" placeholder="${esc(c.ville || '')}"></div></div>`}
     <div class="field"><label for="dv-mt">Montant du devis HT</label><input id="dv-mt" inputmode="numeric" placeholder="Repris du logiciel de facturation" value="${a.montant || ''}"><span class="help">Le devis lui-même est fait dans le logiciel de facturation. Ici, on suit seulement l'affaire.</span></div>
+    ${on('facturation') ? `<div class="field"><label for="dv-ref">N° du devis (facultatif)</label><input id="dv-ref" maxlength="40" placeholder="Ex. : D-2026-0142" value="${esc(a.devisRef || '')}"><span class="help">Il permet de retrouver le devis par la recherche.</span></div>` : ''}
     <button class="btn" type="submit" style="padding:14px">${ic('check', 18)} Passer en « Devis envoyé »</button></form></div>`);
+}
+/* Devis et facture : faits dans le logiciel de facturation agréé ; l'outil garde le n°, la date et le lien. */
+function formDocs(a, facturer) {
+  const fac = a.stage === 'pose';
+  openDrawer(dh(`${a.id} · ${esc(clientName(a))}`, facturer ? 'Marquer facturé' : 'Devis et facture') + `<div class="drawer-b"><form class="form" id="docsForm" data-af="${a.id}" data-fact="${facturer ? 1 : 0}" autocomplete="off">
+    <p class="note">Le devis et la facture se font dans votre <b>logiciel de facturation relié à une plateforme agréée</b> (facturation électronique). Ici, on garde leur numéro, leur date et leur lien.</p>
+    ${facturer ? '' : `<div class="two"><div class="field"><label for="dc-dr">N° du devis</label><input id="dc-dr" maxlength="40" value="${esc(a.devisRef || '')}"></div><div class="field"><label for="dc-dl">Lien du devis (https://…)</label><input id="dc-dl" type="url" maxlength="500" value="${esc(a.devisLien || '')}"></div></div>`}
+    ${fac ? `<div class="two"><div class="field"><label for="dc-fr">N° de la facture</label><input id="dc-fr" maxlength="40" value="${esc(a.factureRef || '')}" placeholder="Ex. : F-2026-0318"></div><div class="field"><label for="dc-fd">Date de la facture</label><input id="dc-fd" type="date" value="${(a.factureDate ? new Date(a.factureDate) : TODAY).toISOString().slice(0, 10)}"></div></div>
+    <div class="field"><label for="dc-fl">Lien de la facture (https://…)</label><input id="dc-fl" type="url" maxlength="500" value="${esc(a.factureLien || '')}"></div>` : '<p class="help">La facture se rattache une fois le chantier posé.</p>'}
+    <button class="btn" type="submit" style="padding:14px">${ic(facturer ? 'euro' : 'check', 18)} ${facturer ? 'Marquer facturé' : 'Enregistrer'}</button></form></div>`);
+}
+function docsBlock(a) {
+  if (!on('facturation') || a.stage === 'demande' || a.stage === 'perdu') return '';
+  const lk = (href, t) => href ? `<a href="${esc(href)}" target="_blank" rel="noopener noreferrer">${esc(t)}</a>` : esc(t);
+  return `<section><div class="sec-h"><h2>Devis et facture</h2><button class="act" data-act="docs" data-af="${a.id}">Rattacher ou corriger</button></div>
+    <dl class="kv"><dt>Devis</dt><dd>${a.devisRef ? lk(a.devisLien, a.devisRef) : '<span class="mute">non rattaché</span>'}${a.devisDate ? ` · envoyé le ${fShort(a.devisDate)}` : ''}</dd>
+    <dt>Facture</dt><dd>${a.factureRef ? lk(a.factureLien, a.factureRef) : `<span class="mute">${a.facture ? 'facturée (numéro non saisi)' : 'pas encore'}</span>`}${a.factureDate ? ` · du ${fShort(new Date(a.factureDate))}` : ''}</dd></dl>
+    <p class="help" style="margin:6px 0 0">Faits dans votre logiciel de facturation agréé.</p></section>`;
 }
 function formPlan(a) {
   const marque = UI.planMarque || 'Mitsubishi Electric';
@@ -1914,7 +1937,7 @@ function viewStock(tech = false) {
   return tabs + `
   <div class="toolbar">
     <label class="search">${ic('search')}<input id="q" type="search" placeholder="Article, référence, code-barres" value="${esc(UI.q)}" autocomplete="off"></label>
-    <select class="f" id="catSel" aria-label="Catégorie"><option value="ALL">Toutes catégories</option>${Object.entries(CATS).map(([k, t]) => `<option value="${k}" ${UI.cat === k ? 'selected' : ''}>${t}</option>`).join('')}</select>
+    <select class="f" id="catSel" aria-label="Catégorie"><option value="ALL">Toutes catégories</option>${Object.entries(cats()).map(([k, t]) => `<option value="${k}" ${UI.cat === k ? 'selected' : ''}>${t}</option>`).join('')}</select>
     <div class="seg" role="group" aria-label="État">${[['ALL','Tous'],['alert','À traiter'],['arch','Archivés']].map(([k, t]) => `<button data-etat="${k}" aria-pressed="${UI.etat === k}">${t}</button>`).join('')}</div>
     ${nOrder && on('commandes') ? `<button class="btn" data-act="order">${ic('cart', 16)} Préparer la commande · ${nOrder}</button>` : ''}
     ${on('vente') ? `<button class="btn soft" data-act="vente">${ic('euro', 16)} Vente pro</button>` : ''}
@@ -1928,7 +1951,7 @@ function viewStock(tech = false) {
       const w = worst(a.id, deps), tot = deps.reduce((s, d) => s + S.stock[a.id][d], 0), res = deps.reduce((s, d) => s + reserved(a.id, d), 0), seuil = deps.reduce((s, d) => s + a.seuil[d], 0);
       const scale = Math.max(tot, seuil * 2, 1);
       return `<tr data-flip="ar-${a.id}" data-open="art:${a.id}">
-        <td><span class="art-name">${esc(a.nom)}</span><span class="art-meta"><span class="tag">${a.ref}</span><span class="mute" style="font-size:12px">${a.marque !== '—' ? a.marque : CATS[a.cat]}</span></span></td>
+        <td><span class="art-name">${esc(a.nom)}</span><span class="art-meta"><span class="tag">${a.ref}</span><span class="mute" style="font-size:12px">${a.marque !== '—' ? a.marque : catName(a.cat)}</span></span></td>
         ${deps.map(d => `<td class="r"><span class="qty ${S.stock[a.id][d] === 0 ? 'zero' : ''}" data-v="q-${a.id}-${d}">${S.stock[a.id][d]}</span><span class="res">${[reserved(a.id, d) ? reserved(a.id, d) + ' réservé' : '', S.enCommande[a.id][d] ? '+' + S.enCommande[a.id][d] + ' commandé' : ''].filter(Boolean).join(' · ') || '&nbsp;'}</span></td>`).join('')}
         <td class="hide-m"><div class="gauge" title="Disponible ${tot - res}, réservé ${res}, seuil ${seuil}"><i style="width:${Math.max(0, tot) / scale * 100}%" class="res"></i><i style="width:${Math.max(0, tot - res) / scale * 100}%"></i><b style="left:${seuil / scale * 100}%"></b></div></td>
         ${showPrices() ? `<td class="r hide-m"><span class="num">${eur(tot * a.prix)}</span></td>` : ''}
@@ -2069,7 +2092,7 @@ function drawerArticle(id) {
   const sns = S.series.filter(s => s.art === id && deps.includes(s.depot) && s.statut === 'stock');
   const mv = S.mvts.filter(m => m.art === id).slice(0, 6);
   const resList = planned().filter(c => c.mat.some(m => m.art === id && m.etat === 'réservé'));
-  openDrawer(dh(`${CATS[a.cat]} · ${a.marque !== '—' ? a.marque : 'générique'}`, esc(a.nom), `<div class="art-meta" style="margin-top:6px"><span class="tag">${a.ref}</span><span class="tag">EAN ${a.ean}</span>${showPrices() ? `<span class="tag">${eur(a.prix)} HT · fictif</span>` : ''}</div>`) + `
+  openDrawer(dh(`${catName(a.cat)} · ${a.marque !== '—' ? a.marque : 'générique'}`, esc(a.nom), `<div class="art-meta" style="margin-top:6px"><span class="tag">${a.ref}</span><span class="tag">EAN ${a.ean}</span>${showPrices() ? `<span class="tag">${eur(a.prix)} HT · fictif</span>` : ''}</div>`) + `
   <div class="drawer-b">
     <div class="depots">${deps.map(d => { const e = etat(id, d); return `<div class="depot-box"><span class="lbl" style="color:var(--ink-2)">${DEPOTS[d]}</span><div class="big">${S.stock[id][d]}</div><div style="font-size:12.5px">${reserved(id, d)} réservé · seuil ${a.seuil[d]}${S.enCommande[id][d] ? ` · ${S.enCommande[id][d]} commandé` : ''}</div><div style="margin-top:8px"><span class="pill ${e.k}">${e.t}</span></div></div>`; }).join('')}</div>
     <div class="btnrow">
@@ -2098,7 +2121,7 @@ function openMove(type, opts = {}) {
 }
 function renderMove() {
   const t = F.type, deps = UI.role === 'responsable' ? [UI.depot] : Object.keys(DEPOTS);
-  const artSel = `<div class="field"><label for="f-art">Article</label><select id="f-art">${UI.role !== 'technicien' ? '<option value="__new">+ Créer un nouvel article…</option>' : ''}${Object.entries(CATS).map(([k, n]) => `<optgroup label="${n}">${liveArts().filter(a => a.cat === k && (F.type !== 'vente' || ['FLU','UI','UE','MX','ACC','CON'].includes(a.cat))).map(a => `<option value="${a.id}" ${F.art === a.id ? 'selected' : ''}>${esc(a.nom)}${a.marque !== '—' ? ' · ' + a.marque : ''}</option>`).join('')}</optgroup>`).join('')}</select><span class="help">${F.art ? `${ART[F.art].ref} · ${S.stock[F.art][F.depot]} en stock à ${DEPOTS[F.depot]}, ${dispo(F.art, F.depot)} disponible` : ''}</span></div>`;
+  const artSel = `<div class="field"><label for="f-art">Article</label><select id="f-art">${UI.role !== 'technicien' ? '<option value="__new">+ Créer un nouvel article…</option>' : ''}${Object.entries(cats()).map(([k, n]) => `<optgroup label="${n}">${liveArts().filter(a => a.cat === k && (F.type !== 'vente' || ['FLU','UI','UE','MX','ACC','CON'].includes(a.cat))).map(a => `<option value="${a.id}" ${F.art === a.id ? 'selected' : ''}>${esc(a.nom)}${a.marque !== '—' ? ' · ' + a.marque : ''}</option>`).join('')}</optgroup>`).join('')}</select><span class="help">${F.art ? `${ART[F.art].ref} · ${S.stock[F.art][F.depot]} en stock à ${DEPOTS[F.depot]}, ${dispo(F.art, F.depot)} disponible` : ''}</span></div>`;
   const depSel = (id, lbl, val, excl) => `<div class="field"><label for="${id}">${lbl}</label><select id="${id}">${Object.keys(DEPOTS).filter(d => d !== excl && (id !== 'f-dep' || deps.includes(d) || t === 'reception')).map(d => `<option value="${d}" ${val === d ? 'selected' : ''}>${DEPOTS[d]}</option>`).join('')}</select></div>`;
   const qty = `<div class="field"><label for="f-qte">${t === 'inventaire' ? 'Quantité comptée' : 'Quantité'}</label><div class="stepper"><button type="button" data-step="-1" aria-label="Moins">−</button><input id="f-qte" inputmode="numeric" value="${F.qte}"><button type="button" data-step="1" aria-label="Plus">+</button></div>${t === 'inventaire' && F.art ? `<span class="help">Stock théorique : ${S.stock[F.art][F.depot]}. L'écart sera enregistré.</span>` : ''}</div>`;
   const chOpts = planned().filter(c => (UI.role !== 'technicien' || c.tech === UI.me) && (deps.includes(c.depot) || t === 'fluide'));
@@ -2245,7 +2268,8 @@ function affAction(act, id) {
   if (act === 'relance') { a.relance = new Date(); addNote(a, 'Client relancé par téléphone.'); closeDrawer(); toast('Relance notée. Prochain rappel dans 7 jours.'); return render(); }
   if (act === 'accepte') { track('m1'); a.stage = 'accepte'; addNote(a, 'Devis accepté.'); closeDrawer(); toast('Devis accepté. Reste à planifier.'); return render(); }
   if (act === 'perdu') { a.stage = 'perdu'; addNote(a, 'Affaire classée sans suite.'); closeDrawer(); toast('Affaire archivée.'); return render(); }
-  if (act === 'facture') { a.facture = true; addNote(a, 'Facturé dans le logiciel de facturation.'); closeDrawer(); toast('Marqué facturé.'); return render(); }
+  if (act === 'facture') { if (on('facturation')) return formDocs(a, true); a.facture = true; addNote(a, 'Facturé dans le logiciel de facturation.'); closeDrawer(); toast('Marqué facturé.'); return render(); }
+  if (act === 'docs') return formDocs(a, false);
   if (act === 'todevis') return formDevis(a);
   if (act === 'plan') { UI.planKit = null; return formPlan(a); }
   if (act === 'entretien') {
@@ -2454,21 +2478,29 @@ Object.assign(P, {
 
 /* ---------- Modules : le dirigeant active ce dont il a besoin ---------- */
 const MODULES = [
-  {k:'affaires', t:'Suivi des affaires', x:'De la demande au devis, à la planification et à la pose. Relances et « À faire ».', who:'Bureau'},
+  {k:'clients', t:'Clients', x:'Particuliers et professionnels, échanges, historique, appareils posés.', who:'Bureau'},
+  {k:'affaires', t:'Suivi des affaires', x:'De la demande au devis, à la planification et à la pose. Relances et « À faire ».', who:'Bureau', need:'clients'},
   {k:'demandes', t:'Demandes du site', x:'Les demandes du simulateur du site arrivent toutes seules dans les affaires.', who:'Bureau', need:'affaires'},
-  {k:'tech', t:'Mode technicien', x:'Un écran simple pour les poseurs : chantiers du jour, sortir et rendre le matériel.', who:'Terrain'},
+  {k:'facturation', t:'Suivi des devis et factures', x:'Rattacher à chaque affaire le numéro, la date et le lien du devis et de la facture faits dans votre logiciel de facturation.', who:'Bureau', need:'affaires'},
+  {k:'tech', t:'Mode technicien', x:'Un écran simple pour les poseurs : chantiers du jour, sortir et rendre le matériel.', who:'Terrain', need:'affaires'},
   {k:'scan', t:'Scan et numéros de série', x:'Scanner les cartons et suivre chaque appareil jusqu’au client (garantie, SAV).', who:'Dépôt, terrain'},
   {k:'commandes', t:'Commandes fournisseur', x:'Liste de réapprovisionnement préparée à partir des seuils et des chantiers.', who:'Dépôt'},
-  {k:'vente', t:'Vente au comptoir aux pros', x:'Vendre aux installateurs, avec contrôle de l’attestation fluides (liste ADEME).', who:'Comptoir'},
-  {k:'fluides', t:'Fluides frigorigènes', x:'Bouteilles, kg chargés et récupérés, fiches Cerfa 15497, déclaration annuelle.', who:'Bureau, terrain'}
+  {k:'vente', t:'Vente au comptoir aux pros', x:'Vendre aux installateurs, avec contrôle de l’attestation fluides (liste ADEME).', who:'Comptoir', need:'clients'},
+  {k:'fluides', t:'Fluides frigorigènes', x:'Bouteilles, kg chargés et récupérés, fiches Cerfa 15497, déclaration annuelle.', who:'Bureau, terrain', need:'clients'}
 ];
+const NEED_T = {clients:'Clients', affaires:'Suivi des affaires'};
 const PRESETS = {
-  essentiel: {t:'Essentiel', x:'Pour démarrer en douceur : clients, affaires et stock.', mods:{affaires:true, demandes:true, tech:true, scan:false, commandes:false, vente:false, fluides:false}},
-  complet: {t:'Complet', x:'Tout l’outil : scan, commandes, vente aux pros et fluides.', mods:{affaires:true, demandes:true, tech:true, scan:true, commandes:true, vente:true, fluides:true}}
+  stock: {t:'Stock seul', x:'Articles, dépôts, mouvements, scan et commandes. Pas de clients.', mods:{clients:false, affaires:false, demandes:false, facturation:false, tech:false, scan:true, commandes:true, vente:false, fluides:false}},
+  clients: {t:'Stock + clients', x:'Le stock, plus le fichier clients et leurs appareils posés.', mods:{clients:true, affaires:false, demandes:false, facturation:false, tech:false, scan:true, commandes:true, vente:false, fluides:false}},
+  affaires: {t:'Stock + clients + affaires', x:'Plus le suivi des affaires, des chantiers et des devis et factures.', mods:{clients:true, affaires:true, demandes:true, facturation:true, tech:true, scan:true, commandes:true, vente:false, fluides:false}},
+  complet: {t:'Complet', x:'Tout l’outil : en plus, vente aux pros et fluides frigorigènes.', mods:{clients:true, affaires:true, demandes:true, facturation:true, tech:true, scan:true, commandes:true, vente:true, fluides:true}}
 };
 UI.mods = UI.mods || Object.assign({}, PRESETS.complet.mods);
-const on = k => UI.mods[k] !== false;
+const NEED = Object.fromEntries(MODULES.filter(m => m.need).map(m => [m.k, m.need]));
+/* Un module qui en demande un autre s'éteint avec lui. */
+const on = k => UI.mods[k] !== false && (!NEED[k] || on(NEED[k]));
 const presetOf = () => Object.entries(PRESETS).find(([, p]) => MODULES.every(m => !!p.mods[m.k] === on(m.k)));
+const PRESET_OLD = {essentiel: 'affaires'};
 const PURPOSE = {
   accueil:'Ce qui se passe aujourd’hui, et quoi faire en premier',
   affaires:'Suivez chaque client de la demande jusqu’à la pose',
@@ -2589,7 +2621,7 @@ function viewAccueil2() {
   const cards = [
     {ic:'box', lbl:'Valeur du stock', v: Math.round(val), unit:'€ HT', key:'k-val', d:`Rotation ${nf1.format(rotation)} fois par an`, spark: series(val, 12, .18, 7), go:'stock'},
     {ic:'alert', tone: rupt ? 'crit' : 'ok', lbl:'Ruptures', v: rupt, key:'k-rupt', d:`${sous} article${sous > 1 ? 's' : ''} sous le seuil`, spark: series(Math.max(rupt, 1), 12, .9, 3).map(Math.round), act: on('commandes') ? 'order' : null, go: on('commandes') ? null : 'stock'},
-    on('affaires') ? {ic:'trend', lbl:'Devis en attente', v: devSum, unit:'€ HT', key:'k-devis', d:`${devis.length} devis · ${devis.filter(aRelancer).length} à relancer`, spark: series(devSum || 1, 12, .5, 11), go:'affaires'} : {ic:'users', lbl:'Clients actifs', v: liveClients().length, key:'k-cl', d:'particuliers et professionnels', spark: series(liveClients().length, 12, .3, 5).map(Math.round), go:'clients'},
+    on('affaires') ? {ic:'trend', lbl:'Devis en attente', v: devSum, unit:'€ HT', key:'k-devis', d:`${devis.length} devis · ${devis.filter(aRelancer).length} à relancer`, spark: series(devSum || 1, 12, .5, 11), go:'affaires'} : !on('clients') ? {ic:'box', lbl:'Articles', v: Object.keys(ART).length, key:'k-art', d:'au catalogue', spark: series(Object.keys(ART).length, 12, .2, 3).map(Math.round), go:'stock'} : {ic:'users', lbl:'Clients actifs', v: liveClients().length, key:'k-cl', d:'particuliers et professionnels', spark: series(liveClients().length, 12, .3, 5).map(Math.round), go:'clients'},
     on('affaires') ? {ic:'cal', lbl:'Chantiers · 14 jours', v: upcoming.length, key:'k-ch', d:`${upcoming.filter(c => chantierManque(c).length).length} avec du matériel manquant`, spark: series(upcoming.length || 1, 12, .5, 2).map(Math.round), go:'affaires'} : {ic:'move', lbl:'Mouvements · 7 jours', v: S.mvts.filter(m => (Date.now() - m.date) / DAY <= 7).length, key:'k-mv', d:'réceptions, sorties, transferts', spark: series(8, 12, .5, 9).map(Math.round), go:'stock'}
   ];
   return `
@@ -2622,12 +2654,11 @@ function viewReglages() {
   const cur = presetOf();
   return `<section class="panel">${panelHead('sparkle', 'Formule', 'Commencez léger, ajoutez des modules quand l’équipe est prête. Rien n’est perdu en désactivant : les données restent.', '')}
     <div class="presets">${Object.entries(PRESETS).map(([k, p]) => `<button class="preset ${cur && cur[0] === k ? 'on' : ''}" data-preset="${k}"><span class="pr-t">${p.t}${cur && cur[0] === k ? ' <span class="pill ok">Active</span>' : ''}</span><span class="pr-x">${p.x}</span><span class="pr-m">${MODULES.filter(m => p.mods[m.k]).map(m => m.t).join(' · ')}</span></button>`).join('')}
-    <div class="preset ghostp ${cur ? '' : 'on'}"><span class="pr-t">Sur mesure${cur ? '' : ' <span class="pill ok">Active</span>'}</span><span class="pr-x">Activez module par module, ci-dessous.</span></div></div></section>
+    <div class="preset ghostp ${cur ? '' : 'on'}"><span class="pr-t">Sur mesure${cur ? '' : ' <span class="pill ok">Active</span>'}</span><span class="pr-x">Activez module par module, ci-dessous.</span></div></div><p class="help" style="margin:12px 0 0">Les devis et les factures se font toujours dans votre logiciel de facturation agréé : l’outil garde seulement leur numéro, leur date et leur lien.</p></section>
   <section class="panel">${panelHead('gear', 'Modules', 'Un module désactivé disparaît des menus, du tableau de bord et des fiches.', '')}
     <div class="mods">
-      <div class="mod fixed"><div><b>Clients</b><span>Particuliers et professionnels, échanges, historique.</span></div><span class="pill plain">Toujours actif</span></div>
       <div class="mod fixed"><div><b>Stock des dépôts</b><span>Tous vos dépôts, mouvements, seuils, corbeille.</span></div><span class="pill plain">Toujours actif</span></div>
-      ${MODULES.map(m => `<label class="mod" for="mod-${m.k}"><div><b>${m.t}</b><span>${m.x}</span><em>${m.who}${m.need ? ' · demande « Suivi des affaires »' : ''}</em></div><input type="checkbox" class="switch" id="mod-${m.k}" data-mod="${m.k}" ${on(m.k) ? 'checked' : ''} ${m.need && !on(m.need) ? 'disabled' : ''}></label>`).join('')}
+      ${MODULES.map(m => `<label class="mod" for="mod-${m.k}"><div><b>${m.t}</b><span>${m.x}</span><em>${m.who}${m.need ? ` · demande « ${NEED_T[m.need]} »` : ''}</em></div><input type="checkbox" class="switch" id="mod-${m.k}" data-mod="${m.k}" ${on(m.k) ? 'checked' : ''} ${m.need && !on(m.need) ? 'disabled' : ''}></label>`).join('')}
     </div></section>
   <section class="panel">${panelHead('text', 'Affichage', 'Pour lire et toucher plus facilement, surtout sur téléphone et tablette.', '')}
     <div class="mods">
@@ -3144,7 +3175,7 @@ document.addEventListener('click', e => {
   if (d.newfromcode) { UI.returnMove = UI.scanMode === 'reception' ? {type:'reception', depot: UI.depot} : null; const c = d.newfromcode; return formArticle(null, /^\d{8,14}$/.test(c) ? {ean: c} : {ref: c}); }
   if (d.archart) { const a = ART[d.archart]; a.archived = !a.archived; closeDrawer(); render(); return toast(a.archived ? `${a.nom} archivé : il n'est plus proposé.` : `${a.nom} est de nouveau proposé.`); }
   if (d.delart) return deleteArticle(d.delart);
-  if (d.preset) { UI.mods = Object.assign({}, PRESETS[d.preset].mods); render(); return toast(`Formule ${PRESETS[d.preset].t} activée.`); }
+  if (d.preset) { d.preset = PRESET_OLD[d.preset] || d.preset; UI.mods = Object.assign({}, PRESETS[d.preset].mods); render(); return toast(`Formule ${PRESETS[d.preset].t} activée.`); }
   if (d.themeset) { UI.theme = d.themeset; applyDisplay(); return render(); }
   if (d.scanmode) { UI.scanMode = d.scanmode; UI.scanCount = d.scanmode === 'inventaire' ? (UI.scanCount || {}) : UI.scanCount; return render(); }
   if (d.go) { closeDrawer(); UI.view = d.go; UI.q = ''; render(); scrollTo(0, 0); return; }
@@ -3165,7 +3196,7 @@ document.addEventListener('click', e => {
     if (k === 'opencl') return drawerClient(a);
     if (k === 'go') { UI.view = a; render(); return; }
     if (k === 'order') return drawerOrder();
-    if ((k === 'relance' || k === 'facture') && !RM) { const row = el.closest('.todo-row'); anim(row, [{backgroundColor: tok('--ok-bg')}, {backgroundColor: tok('--ok-bg')}], {duration: 260, fill: 'forwards'}); el.innerHTML = ic('check', 16); setTimeout(() => affAction(k, a), 260); return; }
+    if ((k === 'relance' || (k === 'facture' && !on('facturation'))) && !RM) { const row = el.closest('.todo-row'); anim(row, [{backgroundColor: tok('--ok-bg')}, {backgroundColor: tok('--ok-bg')}], {duration: 260, fill: 'forwards'}); el.innerHTML = ic('check', 16); setTimeout(() => affAction(k, a), 260); return; }
     return affAction(k === 'plan' ? 'plan' : k, a);
   }
   if (d.act) {
@@ -3247,8 +3278,18 @@ document.addEventListener('submit', e => {
     if (!a.client) { const nom = document.getElementById('dv-nom').value.trim(); if (!nom) return toast('Indiquez le nom du client.'); const id = 'c' + (CLIENTS.length + 1); CLIENTS.push({id, nom, tel: document.getElementById('dv-tel').value.trim() || '—', ville: document.getElementById('dv-ville').value.trim() || a.contact.ville, type:'Particulier'}); a.client = id; }
     const mt = parseInt(document.getElementById('dv-mt').value.replace(/\D/g, ''), 10);
     if (!mt) return toast('Indiquez le montant du devis.');
-    a.montant = mt; a.devisDate = new Date(); a.stage = 'devis'; addNote(a, `Devis envoyé : ${eur(mt)} HT.`);
+    const dref = (document.getElementById('dv-ref') || {}).value; if (dref && dref.trim()) a.devisRef = dref.trim().slice(0, 40);
+    a.montant = mt; a.devisDate = new Date(); a.stage = 'devis'; addNote(a, `Devis envoyé : ${eur(mt)} HT${a.devisRef ? ` (n° ${a.devisRef})` : ''}.`);
     closeDrawer(); toast('Devis noté. Relance proposée dans 7 jours.'); return render();
+  }
+  if (f.id === 'docsForm') {
+    const a = S.aff.find(x => x.id === f.dataset.af), v = id => ((document.getElementById(id) || {}).value || '').trim();
+    const okLien = l => !l || /^https:\/\/[^\s<>"]{3,}$/.test(l);
+    if (!okLien(v('dc-dl')) || !okLien(v('dc-fl'))) return toast('Un lien doit commencer par https://');
+    if (document.getElementById('dc-dr')) { a.devisRef = v('dc-dr').slice(0, 40) || null; a.devisLien = v('dc-dl') || null; }
+    if (document.getElementById('dc-fr')) { a.factureRef = v('dc-fr').slice(0, 40) || null; a.factureLien = v('dc-fl') || null; a.factureDate = v('dc-fd') ? new Date(v('dc-fd') + 'T00:00') : (a.factureRef ? new Date() : null); }
+    if (f.dataset.fact === '1' || a.factureRef) { if (!a.facture) addNote(a, `Facturé dans le logiciel de facturation${a.factureRef ? ` (facture ${a.factureRef})` : ''}.`); a.facture = true; }
+    closeDrawer(); toast(a.factureRef ? `Facture ${a.factureRef} rattachée.` : 'Devis et facture rattachés.'); return render();
   }
   if (f.id === 'planForm') {
     const a = S.aff.find(x => x.id === f.dataset.af), v = document.getElementById('pl-date').value;
