@@ -226,13 +226,13 @@ ${corps}
 }
 
 // ------------------------------------------------------------------ page introuvable (servie avec le statut 404 par l'hébergeur)
-const base = PROD ? '/' : C.baseApercu;
+// aperçu : la même page sert sous GitHub Pages (/qualiclim-sud-apercu/) et à la racine du serveur VPS
 ecrire('404.html', `<!doctype html>
 <html lang="fr">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<base href="${base}">
+${PROD ? `<base href="/">` : `<script>document.write('<base href="' + (location.pathname.indexOf('${C.baseApercu}') === 0 ? '${C.baseApercu}' : '/') + '">');</script>`}
 <title>Page introuvable | Qualiclim Sud</title>
 <meta name="description" content="Cette page n'existe pas ou a changé d'adresse. Retrouvez la climatisation réversible Qualiclim Sud, de Fréjus à Cannes.">
 <meta name="theme-color" content="#0e1d33">
@@ -292,6 +292,71 @@ ecrire('_headers', `# En-têtes de sécurité — modèle de REGLES/STANDARD-SIT
   Cache-Control: public, max-age=31536000, immutable
 /js/vendor/*
   Cache-Control: public, max-age=31536000, immutable
+`);
+
+// ------------------------------------------------------------------ serveur VPS (nginx) : mêmes en-têtes que _headers, internes jamais servis
+const HOTE = new URL(D).hostname;
+ecrire('outils/nginx-qualiclimsud.conf', `# Fabriqué par outils/fabriquer.mjs (mode ${PROD ? 'production' : 'aperçu'}) — ne pas modifier à la main.
+# Posé par outils/installer-vps.sh dans /etc/nginx/sites-available/${HOTE} (certificat Let's Encrypt par certbot, méthode webroot).
+
+# Port 80 : validation du certificat, puis tout part en HTTPS
+server {
+    listen 80;
+    listen [::]:80;
+    server_name ${HOTE} www.${HOTE};
+    location ^~ /.well-known/acme-challenge/ { root /var/www/acme-qualiclimsud; default_type text/plain; }
+    location / { return 301 https://${HOTE}$request_uri; }
+}
+
+# www renvoie vers l'adresse unique ${HOTE}
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name www.${HOTE};
+    ssl_certificate /etc/letsencrypt/live/${HOTE}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${HOTE}/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    return 301 https://${HOTE}$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name ${HOTE};
+    ssl_certificate /etc/letsencrypt/live/${HOTE}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${HOTE}/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    root /var/www/qualiclimsud;
+    index index.html;
+    charset utf-8;
+${PROD ? '' : `
+    # Aperçu : protégé par mot de passe et jamais indexé (STANDARD-SITE.md, SEO-INDEX-02)
+    auth_basic "Apercu Qualiclim Sud";
+    auth_basic_user_file /etc/nginx/qualiclimsud.htpasswd;
+    add_header X-Robots-Tag "noindex, nofollow" always;
+`}
+    # En-têtes de sécurité (STANDARD-SITE.md §3)
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header Content-Security-Policy "${csp}" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "DENY" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
+
+    gzip on;
+    gzip_types text/css application/javascript text/plain application/json image/svg+xml application/xml;
+
+    # Les coulisses du dépôt ne sont jamais servies
+    location ~ (^/\\.|^/outils/|^/contenus/|^/configuration\\.json$|^/_headers$|\\.md$|\\.mjs$) { return 404; }
+
+    # Vraie page introuvable, avec le statut 404 (FUNC-404-01)
+    error_page 404 /404.html;
+    location = /404.html { internal; }
+
+    location ~* ^/(polices|js/vendor)/ { expires 1y; try_files $uri =404; }
+    location ~* \\.(webp|jpg|png|ico|mp4|webm)$ { expires 30d; try_files $uri =404; }
+    location / { try_files $uri $uri/ =404; }
+}
 `);
 
 console.log(`Fabriqué en mode ${PROD ? 'PRODUCTION' : 'aperçu'} — mesure ${MESURE ? C.mesureId : 'absente'}, Search Console ${C.searchConsole ? 'posée' : 'absente'}, formulaire ${C.formulaire ? origineFormulaire : 'non relié'}.`);

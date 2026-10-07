@@ -1,0 +1,140 @@
+#!/usr/bin/env bash
+# Qualiclim Sud — installation du site sur un serveur VPS (Debian ou Ubuntu), en une commande :
+#
+#   curl -fsSL https://raw.githubusercontent.com/DVM-CONSULTING/qualiclim-sud-apercu/main/outils/installer-vps.sh | sudo bash
+#
+# Ce que fait ce script (on peut le relancer sans risque, il reprend où il en est) :
+#   1. vérifie que le domaine pointe bien vers ce serveur (sinon il s'arrête et dit quoi corriger chez OVH) ;
+#   2. installe nginx, git et certbot s'ils manquent (n'installe rien d'autre, ne touche à aucun autre site) ;
+#   3. récupère le site depuis GitHub dans /var/www/qualiclimsud ;
+#   4. obtient le certificat HTTPS gratuit (Let's Encrypt), renouvelé automatiquement ;
+#   5. pose la configuration nginx fabriquée avec le site (en-têtes de sécurité, page 404, www → sans www) ;
+#   6. en mode aperçu : protège le site par un mot de passe, affiché une seule fois à la fin ;
+#   7. met le site à jour tout seul toutes les 5 minutes depuis GitHub (les fichiers du site, jamais la configuration).
+set -euo pipefail
+
+DOMAINE="qualiclimsud.fr"
+DEPOT="https://github.com/DVM-CONSULTING/qualiclim-sud-apercu.git"
+BRANCHE="main"
+RACINE="/var/www/qualiclimsud"
+ACME="/var/www/acme-qualiclimsud"
+CONF="/etc/nginx/sites-available/${DOMAINE}"
+MDP="/etc/nginx/qualiclimsud.htpasswd"
+CONTACT="contact@${DOMAINE}"
+# serveur sans IPv6 : nginx refuserait les lignes « listen [::] », on les retire
+sans_ipv6() { if [ ! -s /proc/net/if_inet6 ]; then sed -i '/listen \[::\]/d' "$1"; fi; }
+
+etape() { printf '\n\033[1m▶ %s\033[0m\n' "$1"; }
+stop()  { printf '\n\033[31m✖ %s\033[0m\n' "$1" >&2; exit 1; }
+ok()    { printf '  ✔ %s\n' "$1"; }
+
+[ "$(id -u)" -eq 0 ] || stop "Lance la commande avec sudo."
+command -v apt-get >/dev/null || stop "Ce script est prévu pour Debian ou Ubuntu. Envoie ce message à Claude."
+
+etape "1/7 — Le domaine pointe-t-il vers ce serveur ?"
+command -v curl >/dev/null || { apt-get update -q && apt-get install -y -q curl; }
+IP4=$(curl -4 -fsS --max-time 10 https://api.ipify.org || true)
+IP6=$(curl -6 -fsS --max-time 10 https://api64.ipify.org || true)
+A_DOM=$(getent ahostsv4 "$DOMAINE" | awk 'NR==1{print $1}' || true)
+A_WWW=$(getent ahostsv4 "www.$DOMAINE" | awk 'NR==1{print $1}' || true)
+AAAA_DOM=$(getent ahostsv6 "$DOMAINE" | awk '$1 ~ /:/ && $1 !~ /^::ffff:/ {print $1; exit}' || true)
+echo "  Adresse de ce serveur : ${IP4:-inconnue}${IP6:+ / $IP6}"
+echo "  ${DOMAINE} → ${A_DOM:-rien} ${AAAA_DOM:+/ $AAAA_DOM} ; www.${DOMAINE} → ${A_WWW:-rien}"
+PB=""
+if [ -n "$IP4" ] && [ "$A_DOM" != "$IP4" ]; then PB+=$'\n'"  - chez OVH, zone DNS : enregistrement A de ${DOMAINE} → ${IP4}"; fi
+if [ -n "$IP4" ] && [ "$A_WWW" != "$IP4" ]; then PB+=$'\n'"  - chez OVH, zone DNS : www.${DOMAINE} → ${IP4} (enregistrement A, ou CNAME vers ${DOMAINE}.)"; fi
+if [ -n "$AAAA_DOM" ] && [ "$AAAA_DOM" != "$IP6" ]; then PB+=$'\n'"  - chez OVH, zone DNS : supprimer l'enregistrement AAAA de ${DOMAINE} (${AAAA_DOM}) et celui de www s'il existe"; fi
+if [ -z "$IP4" ]; then stop "Impossible de connaître l'adresse de ce serveur (accès internet ?). Envoie ce message à Claude."; fi
+if [ -n "$PB" ]; then stop "Le domaine ne pointe pas encore vers ce serveur. À faire :${PB}"$'\n'"  Puis attendre 15 à 60 minutes et relancer la même commande."; fi
+ok "le domaine pointe bien ici"
+
+etape "2/7 — Logiciels nécessaires"
+for s in apache2 caddy httpd; do
+  if systemctl is-active --quiet "$s" 2>/dev/null; then stop "$s fonctionne déjà sur ce serveur : je ne l'installe pas par-dessus. Envoie ce message à Claude."; fi
+done
+MANQUE=""
+command -v nginx >/dev/null || MANQUE="$MANQUE nginx"
+command -v git >/dev/null || MANQUE="$MANQUE git"
+command -v certbot >/dev/null || MANQUE="$MANQUE certbot"
+command -v openssl >/dev/null || MANQUE="$MANQUE openssl"
+if [ -n "$MANQUE" ]; then apt-get update -q && DEBIAN_FRONTEND=noninteractive apt-get install -y -q $MANQUE; fi
+systemctl enable --now nginx >/dev/null 2>&1 || true
+ok "nginx, git, certbot présents"
+
+etape "3/7 — Récupération du site"
+if [ -d "$RACINE/.git" ]; then
+  git -C "$RACINE" fetch -q origin "$BRANCHE" && git -C "$RACINE" reset -q --hard "origin/$BRANCHE"
+else
+  rm -rf "$RACINE"; git clone -q --depth 1 --branch "$BRANCHE" "$DEPOT" "$RACINE"
+fi
+chmod -R a+rX "$RACINE"
+[ -f "$RACINE/index.html" ] && [ -f "$RACINE/outils/nginx-qualiclimsud.conf" ] || stop "Le site récupéré est incomplet. Envoie ce message à Claude."
+ok "site dans $RACINE (version $(git -C "$RACINE" log -1 --format=%h))"
+
+etape "4/7 — Certificat HTTPS"
+mkdir -p "$ACME"
+if [ ! -f "/etc/letsencrypt/live/${DOMAINE}/fullchain.pem" ]; then
+  # configuration provisoire : seulement de quoi prouver à Let's Encrypt que le domaine est ici
+  cat > "$CONF" <<EOF
+server {
+    listen 80;
+    listen [::]:80;
+    server_name ${DOMAINE} www.${DOMAINE};
+    location ^~ /.well-known/acme-challenge/ { root ${ACME}; default_type text/plain; }
+    location / { return 503; }
+}
+EOF
+  sans_ipv6 "$CONF"
+  ln -sf "$CONF" "/etc/nginx/sites-enabled/${DOMAINE}"
+  nginx -t -q || { rm -f "/etc/nginx/sites-enabled/${DOMAINE}"; stop "nginx refuse la configuration provisoire (rien n'a été changé pour les autres sites). Envoie ce message à Claude."; }
+  systemctl reload nginx
+  certbot certonly --webroot -w "$ACME" -d "$DOMAINE" -d "www.$DOMAINE" --non-interactive --agree-tos -m "$CONTACT" --deploy-hook "systemctl reload nginx" \
+    || stop "Let's Encrypt n'a pas pu délivrer le certificat (souvent : DNS pas encore à jour). Attends 30 minutes et relance la même commande."
+fi
+ok "certificat valable (renouvelé automatiquement par certbot)"
+
+etape "5/7 — Configuration du site"
+SAUVE=""
+[ -f "$CONF" ] && SAUVE=$(mktemp) && cp "$CONF" "$SAUVE"
+cp "$RACINE/outils/nginx-qualiclimsud.conf" "$CONF"
+sans_ipv6 "$CONF"
+ln -sf "$CONF" "/etc/nginx/sites-enabled/${DOMAINE}"
+
+etape "6/7 — Mot de passe de l'aperçu"
+NOUVEAU_MDP=""
+if grep -q "auth_basic_user_file" "$CONF"; then
+  if [ ! -s "$MDP" ]; then
+    NOUVEAU_MDP=$(openssl rand -base64 18 | tr -dc 'A-Za-z0-9' | head -c 16)
+    printf 'qualiclim:%s\n' "$(openssl passwd -apr1 "$NOUVEAU_MDP")" > "$MDP"
+    chown root:www-data "$MDP" 2>/dev/null || true; chmod 640 "$MDP"
+  fi
+  ok "aperçu protégé (identifiant : qualiclim)"
+else
+  ok "site public (mode production) : pas de mot de passe"
+fi
+if ! nginx -t -q; then
+  if [ -n "$SAUVE" ]; then cp "$SAUVE" "$CONF"; else rm -f "/etc/nginx/sites-enabled/${DOMAINE}"; fi
+  stop "nginx refuse la configuration du site : l'ancienne a été remise, les autres sites ne sont pas touchés. Envoie ce message à Claude."
+fi
+systemctl reload nginx
+ok "nginx rechargé"
+
+etape "7/7 — Mise à jour automatique"
+cat > /usr/local/bin/qualiclim-maj <<EOF
+#!/usr/bin/env bash
+# Met à jour les fichiers du site Qualiclim Sud depuis GitHub (jamais la configuration nginx).
+set -e
+cd "$RACINE"
+git fetch -q origin "$BRANCHE"
+if [ "\$(git rev-parse HEAD)" != "\$(git rev-parse origin/$BRANCHE)" ]; then git reset -q --hard "origin/$BRANCHE"; chmod -R a+rX "$RACINE"; fi
+EOF
+chmod 755 /usr/local/bin/qualiclim-maj
+echo "*/5 * * * * root /usr/local/bin/qualiclim-maj >/dev/null 2>&1" > /etc/cron.d/qualiclim-maj
+ok "le site se met à jour tout seul toutes les 5 minutes"
+
+CODE=$(curl -s -o /dev/null -w '%{http_code}' "https://${DOMAINE}/" || true)
+printf '\n\033[32m✔ Terminé.\033[0m https://%s répond (%s : 401 = protégé par mot de passe, 200 = public).\n' "$DOMAINE" "$CODE"
+if [ -n "$NOUVEAU_MDP" ]; then
+  printf '\n  Accès à l’aperçu — identifiant : qualiclim — mot de passe : \033[1m%s\033[0m\n' "$NOUVEAU_MDP"
+  printf '  Note-le maintenant (il ne sera plus affiché) et enregistre-le dans l’Arrière-boutique :\n  Connexions › Aperçu protégé par mot de passe. Ne l’envoie jamais dans une conversation ni dans GitHub.\n'
+fi

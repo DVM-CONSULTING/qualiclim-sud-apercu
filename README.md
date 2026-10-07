@@ -35,3 +35,15 @@ Photos aériennes et relief : IGN — BD ORTHO®, RGE ALTI® (Licence Ouverte Et
 Bathymetry (CC BY 4.0). Rivage : © les contributeurs d'OpenStreetMap (ODbL). Polices Manrope et Azeret Mono :
 SIL Open Font License 1.1. GSAP (licence standard GSAP), Lenis (MIT), three.js (MIT).
 Fabriqué par DVM Consulting — Digital experience by Belle Devanture.
+
+## Serveur VPS (production choisie par David)
+
+Sur le serveur (Debian ou Ubuntu), une commande : 
+
+    curl -fsSL https://raw.githubusercontent.com/DVM-CONSULTING/qualiclim-sud-apercu/main/outils/installer-vps.sh | sudo bash
+
+Le script vérifie le DNS, installe nginx, git et certbot s'ils manquent (refuse de s'installer par-dessus Apache ou
+Caddy), récupère le site dans `/var/www/qualiclimsud`, obtient le certificat Let's Encrypt (webroot), pose
+`outils/nginx-qualiclimsud.conf` (fabriqué par `fabriquer.mjs` : en-têtes du §3, 404, www → sans www, coulisses du
+dépôt jamais servies), protège l'aperçu par mot de passe (affiché une fois) et met les fichiers à jour toutes les 5 min.
+La configuration nginx ne change que quand on relance le script (passage en production : relancer après le push).
