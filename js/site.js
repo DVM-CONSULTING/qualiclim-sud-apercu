@@ -361,7 +361,7 @@
       const projet = (f.querySelector('[name=projet]:checked') || {}).value, commune = $('#f-commune').value, rappel = $('[name=rappel]', f).checked;
       const message = [`Projet : ${PROJETS[projet] || 'non précisé'}`, `Commune : ${commune || 'non précisée'}`, rappel ? 'Souhaite être rappelé·e.' : 'Ne demande pas de rappel.', '', $('#f-msg').value.trim() || '(pas de message)'].join('\n');
       enCours = true; bouton.classList.add('envoi-en-cours'); lib.textContent = 'Envoi…'; out.textContent = '';
-      const r = window.QualiclimEnvoi ? await window.QualiclimEnvoi.envoyer({ nom: nom.value.trim(), telephone: tel.value.trim(), email: mail.value.trim(), message, site_web: $('#f-site').value }, 'contact') : { ok: false, nonRelie: true };
+      const r = window.QualiclimEnvoi ? await window.QualiclimEnvoi.envoyer({ nom: nom.value.trim(), telephone: tel.value.trim(), email: mail.value.trim(), message, site_web: $('#f-site').value, rappel, details: [['Projet', PROJETS[projet] || 'non précisé'], ['Commune', commune || 'non précisée']], note: $('#f-msg').value.trim() }, 'contact') : { ok: false, nonRelie: true };
       enCours = false; bouton.classList.remove('envoi-en-cours');
       if (r.ok) {
         f.classList.add('envoye'); lib.textContent = 'Demande envoyée';

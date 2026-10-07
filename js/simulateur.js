@@ -249,7 +249,12 @@
       r.supplements.length ? `Suppléments détectés : ${r.supplements.map(x => x.libelle).join(', ')}` : 'Pose standard.',
       coche('rappel') ? 'Souhaite être rappelé·e.' : 'Ne demande pas de rappel.'];
     envoiEnCours = true; out.textContent = 'Envoi…';
-    const res = window.QualiclimEnvoi ? await window.QualiclimEnvoi.envoyer({ nom, email: mail, telephone: tel, message: lignes.join('\n') }, 'simulateur') : { ok: false, nonRelie: true };
+    const res = window.QualiclimEnvoi ? await window.QualiclimEnvoi.envoyer({ nom, email: mail, telephone: tel, message: lignes.join('\n'), rappel: coche('rappel'), details: [
+      ['Logement', `${val('type') === 'appartement' ? 'Appartement' : 'Maison'} · code postal ${$('s-cp').value || 'non indiqué'}`],
+      ['Puissance conseillée', `${nb(dim.puissanceTotaleKw)} kW · ${dim.configuration === 'multisplit' ? CONFIG.multisplit(dim.pieces.length) : CONFIG[dim.configuration]}`],
+      ['Pièces', dim.pieces.map(p => `${p.nom} ${nb(p.surfaceM2, 0)} m² (${nb(p.puissanceCalculeeKw)} kW)`).join(' · ')],
+      ['Unité extérieure', `${val('emplacementUe') || 'non précisé'} · distance ${$('s-dist').value} m`],
+      ['Suppléments', r.supplements.length ? r.supplements.map(x => x.libelle).join(', ') : 'pose standard']] }, 'simulateur') : { ok: false, nonRelie: true };
     envoiEnCours = false;
     out.textContent = res.ok ? 'Merci, votre estimation nous est parvenue. Nous vous répondons par e-mail' + (coche('rappel') ? ', et nous vous rappelons comme vous l\'avez demandé.' : '.')
       : res.nonRelie ? "Aperçu du site : l'envoi sera relié à la mise en ligne, rien n'a été envoyé. En attendant, appelez-nous au 06 34 49 32 49."

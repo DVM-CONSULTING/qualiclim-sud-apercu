@@ -14,11 +14,14 @@ Règles tenues (comme le Worker) :
     et `relais-formulaire.py --relancer` (minuteur systemd, toutes les 5 minutes) la renvoie ;
   - champ piège rempli ou envoi en moins de 3 s : on répond « merci » sans rien envoyer (on ne renseigne
     jamais un robot) ; 5 demandes au plus par appareil et par 10 minutes ;
-  - le message d'un visiteur n'est jamais interprété : texte brut, HTML échappé.
+  - le message d'un visiteur n'est jamais interprété : texte brut, HTML échappé ;
+  - deux e-mails : l'alerte à l'entreprise (bouton d'appel, détails, message), puis, si le visiteur a laissé son
+    e-mail, un accusé de réception qui ne recopie jamais son texte (pas de relais de spam vers un tiers).
 
 Configuration par variables d'environnement (fichier /etc/qualiclim-relais.env, lisible par root seulement) :
   BREVO_API_KEY (obligatoire), DESTINATAIRE, EXPEDITEUR, NOM_EXPEDITEUR, COPIE (facultatif), SLUG,
-  ENTREPRISE, ORIGINES (séparées par des espaces), PORT. Aucune dépendance : bibliothèque standard de Python 3.
+  ENTREPRISE, ORIGINES (séparées par des espaces), PORT, SITE_URL, TEL_ENTREPRISE, MENTION_SOCIETE,
+  ACCUSE (0 pour ne pas envoyer d'accusé de réception au visiteur). Aucune dépendance : bibliothèque standard de Python 3.
 """
 import html
 import json
@@ -44,6 +47,10 @@ NOM_EXPEDITEUR = os.environ.get('NOM_EXPEDITEUR', 'Site Qualiclim Sud').strip()
 COPIE = os.environ.get('COPIE', '').strip()
 SLUG = os.environ.get('SLUG', 'qualiclim-sud').strip()
 ENTREPRISE = os.environ.get('ENTREPRISE', 'Qualiclim Sud').strip()
+SITE_URL = os.environ.get('SITE_URL', 'https://qualiclimsud.fr').strip().rstrip('/')
+TEL_ENTREPRISE = os.environ.get('TEL_ENTREPRISE', '06 34 49 32 49').strip()
+MENTION_SOCIETE = os.environ.get('MENTION_SOCIETE', 'QUALICLIM, SASU au capital de 100\u00a0€ · SIREN\u00a0944\u00a0335\u00a0249').strip()
+ACCUSE = os.environ.get('ACCUSE', '1').strip() != '0'  # accusé de réception au visiteur qui a laissé son e-mail
 ORIGINES = set(os.environ.get('ORIGINES', 'https://qualiclimsud.fr https://www.qualiclimsud.fr').split())
 PORT = int(os.environ.get('PORT', '8787'))
 DOSSIER = Path(os.environ.get('STATE_DIRECTORY', '/var/lib/qualiclim-relais'))
@@ -94,53 +101,184 @@ def valider(champs: dict) -> tuple:
         erreurs.append('Merci de décrire votre demande en quelques mots.')
     elif len(msg) > 2000:
         erreurs.append(f'Votre message est trop long ({len(msg)} caractères, maximum 2000). Merci de le raccourcir.')
-    return erreurs, {'nom': nom, 'telephone': tel or None, 'email': mail or None, 'message': msg}
+    return erreurs, {'nom': nom, 'telephone': tel or None, 'email': mail or None, 'message': msg, **complements(champs)}
 
 
-# ---------------------------------------------------------------- e-mail Brevo
+def complements(champs: dict) -> dict:
+    """Champs facultatifs envoyés par le site pour un e-mail plus lisible ; le message complet reste la référence."""
+    formulaire = nettoyer(champs.get('formulaire'))
+    rappel = champs.get('rappel')
+    details = champs.get('details')
+    sortie = {'formulaire': formulaire if formulaire in ('contact', 'simulateur') else None,
+              'rappel': rappel is True or nettoyer(rappel).lower() in ('oui', 'true', '1')}
+    if isinstance(details, list):
+        sortie['details'] = [[nettoyer(p[0])[:40], nettoyer(p[1])[:200]] for p in details[:12]
+                             if isinstance(p, list) and len(p) == 2 and nettoyer(p[0]) and nettoyer(p[1])]
+        sortie['note'] = nettoyer(champs.get('note'))[:2000]
+    return sortie
+
+
+# ---------------------------------------------------------------- e-mails (HTML en tableaux : Gmail, Outlook, Apple Mail, téléphones)
+# Couleurs du site (css/site.css) : nuit cobalt, porcelaine, cobalt réservé aux chiffres et aux repères.
+NUIT, PORCELAINE, COBALT, GLACIER, FILET, DOUX = '#0e1d33', '#f4f2ee', '#2a5fae', '#e4e9f0', '#d4d1cb', '#5b6472'
+POLICE = "font-family:'Manrope',Helvetica,Arial,sans-serif;"
+JOURS = ('lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche')
+MOIS = ('janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre')
+ORIGINES_DEMANDE = {'contact': 'Demande de contact', 'simulateur': 'Estimation du simulateur'}
+e = html.escape
+
+
+def date_longue(iso: str) -> str:
+    t = datetime.fromisoformat(iso).astimezone(PARIS)
+    return f"{JOURS[t.weekday()]} {t.day}{'er' if t.day == 1 else ''} {MOIS[t.month - 1]} {t.year} à {t:%H:%M}"
+
+
+def tel_lien(numero: str) -> str:
+    chiffres = re.sub(r'[^\d+]', '', numero)
+    return '+33' + chiffres[1:] if chiffres.startswith('0') and len(chiffres) == 10 else chiffres
+
+
+def bouton(lien: str, texte: str, detail: str = '', plein: bool = True) -> str:
+    fond, encre, bord = (NUIT, '#ffffff', NUIT) if plein else ('#ffffff', NUIT, NUIT)
+    sous = (f'<br><span style="font-weight:500;font-size:16px;letter-spacing:.02em;">{detail}</span>') if detail else ''
+    return (f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 12px;">'
+            f'<tr><td align="center" bgcolor="{fond}" style="border:2px solid {bord};border-radius:12px;">'
+            f'<a href="{lien}" style="display:block;padding:15px 18px;{POLICE}font-size:17px;font-weight:700;line-height:1.35;'
+            f'color:{encre};text-decoration:none;border-radius:12px;">{texte}{sous}</a></td></tr></table>')
+
+
+def pastille(texte: str, fond: str, encre: str) -> str:
+    return (f'<span style="display:inline-block;margin:0 6px 6px 0;padding:5px 11px;border-radius:999px;background:{fond};'
+            f'color:{encre};{POLICE}font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;">{texte}</span>')
+
+
+def cadre(titre: str, annonce: str, bandeau: str, contenu: str, pied: str) -> str:
+    """Coquille commune : bandeau nuit avec le logo, carte blanche, pied discret. 600 px, une colonne."""
+    vide = '&#847;&zwnj;&nbsp;' * 40  # empêche la messagerie d'afficher la suite du texte après l'annonce
+    return f'''<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light"><meta name="supported-color-schemes" content="light"><title>{e(titre)}</title>
+<style>
+@media (max-width:620px){{ .carte{{width:100%!important}} .marge{{padding-left:22px!important;padding-right:22px!important}} .titre{{font-size:25px!important}} }}
+a[x-apple-data-detectors]{{color:inherit!important;text-decoration:none!important}}
+</style></head>
+<body style="margin:0;padding:0;background:{PORCELAINE};-webkit-text-size-adjust:100%;">
+<div style="display:none;max-height:0;max-width:0;overflow:hidden;opacity:0;mso-hide:all;">{e(annonce)}{vide}</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="{PORCELAINE}" style="background:{PORCELAINE};">
+<tr><td align="center" style="padding:28px 12px 36px;">
+<table role="presentation" class="carte" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;">
+<tr><td align="center" bgcolor="{NUIT}" style="background:{NUIT};border-radius:16px 16px 0 0;padding:30px 24px 24px;">
+<a href="{SITE_URL}/" style="text-decoration:none;"><img src="{SITE_URL}/courriel/logo.png" width="168" height="112" alt="Qualiclim Sud"
+ style="display:block;width:168px;height:auto;border:0;outline:none;color:{PORCELAINE};{POLICE}font-size:24px;font-weight:700;"></a>
+<p style="margin:16px 0 0;{POLICE}font-size:12px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:#aab6c8;">{bandeau}</p>
+</td></tr>
+<tr><td height="4" bgcolor="{COBALT}" style="background:{COBALT};font-size:0;line-height:0;">&nbsp;</td></tr>
+<tr><td class="marge" bgcolor="#ffffff" style="background:#ffffff;border-radius:0 0 16px 16px;padding:34px 40px 36px;{POLICE}color:{NUIT};font-size:16px;line-height:1.55;">
+{contenu}
+</td></tr>
+<tr><td class="marge" align="center" style="padding:22px 40px 0;{POLICE}font-size:12px;line-height:1.6;color:{DOUX};">{pied}</td></tr>
+</table></td></tr></table></body></html>'''
+
+
+def ligne_detail(libelle: str, valeur: str) -> str:
+    return (f'<tr><td valign="top" style="padding:11px 12px 11px 0;border-top:1px solid {GLACIER};{POLICE}font-size:14px;color:{DOUX};width:38%;">{e(libelle)}</td>'
+            f'<td valign="top" style="padding:11px 0;border-top:1px solid {GLACIER};{POLICE}font-size:15px;font-weight:600;color:{NUIT};">{e(valeur)}</td></tr>')
+
+
 def gabarit(d: dict) -> tuple:
+    """L'e-mail reçu par l'entreprise : qui, comment le joindre, ce qu'il demande. Le bouton d'appel d'abord."""
+    origine = ORIGINES_DEMANDE.get(d.get('formulaire') or '', 'Demande depuis le site')
+    rappel = d.get('rappel') is True
     contact = d['telephone'] or d['email'] or ''
-    sujet = f"Nouvelle demande — {d['nom']}" + (f" — {contact}" if contact else '')
-    recu = datetime.fromisoformat(d['recu_le']).astimezone(PARIS).strftime('%d/%m/%Y à %H:%M')
-    lignes = [f"Nom : {d['nom']}", f"Téléphone : {d['telephone'] or 'non communiqué'}",
-              f"Email : {d['email'] or 'non communiqué'}", f"Reçu le : {recu}", '', 'Message :', d['message']]
-    texte = '\n'.join(['Vous avez reçu une nouvelle demande depuis votre site internet.', '', *lignes, '',
-                       'Pour répondre, utilisez simplement le bouton « Répondre » de votre messagerie :',
-                       'votre réponse partira directement au client.'])
-    e = html.escape
-    bouton_tel = (f'<p style="margin:18px 0;"><a href="tel:{e(d["telephone"].replace(" ", ""))}" style="display:inline-block;'
-                  f'background:#0e1d33;color:#ffffff;text-decoration:none;padding:14px 22px;border-radius:8px;font-weight:700;'
-                  f'font-size:18px;">Appeler {e(d["nom"])} — {e(d["telephone"])}</a></p>') if d['telephone'] else ''
-    bouton_mail = (f'<p style="margin:12px 0;"><a href="mailto:{e(d["email"])}" style="color:#2a5fae;font-weight:600;">'
-                   f'Écrire à {e(d["email"])}</a></p>') if d['email'] else ''
-    ligne = lambda t, v, g=True: (f'<tr><td style="padding:6px 0;color:#52525b;width:110px;">{t}</td>'
-                                  f'<td style="padding:6px 0;{"font-weight:600;" if g else ""}">{e(v)}</td></tr>')
-    corps_html = (f'<!doctype html><html lang="fr"><body style="margin:0;padding:24px;background:#f4f2ee;font-family:Arial,sans-serif;color:#0e1d33;">'
-                  f'<div style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:10px;padding:24px;">'
-                  f'<p style="margin:0 0 4px;font-size:15px;color:#52525b;">{e(ENTREPRISE)}</p>'
-                  f'<h1 style="margin:0 0 16px;font-size:22px;">Nouvelle demande depuis votre site</h1>'
-                  f'<table style="width:100%;border-collapse:collapse;font-size:17px;">'
-                  f'{ligne("Nom", d["nom"])}{ligne("Téléphone", d["telephone"] or "non communiqué")}'
-                  f'{ligne("Email", d["email"] or "non communiqué")}{ligne("Reçu le", recu, False)}</table>'
-                  f'{bouton_tel}{bouton_mail}<p style="margin:18px 0 6px;color:#52525b;font-size:15px;">Message</p>'
-                  f'<div style="padding:14px;background:#f4f4f5;border-radius:8px;white-space:pre-wrap;">{e(d["message"])}</div>'
-                  f'<p style="margin:20px 0 0;font-size:14px;color:#71717a;">Vous pouvez répondre directement à cet email : '
-                  f'votre réponse arrivera au client.</p></div></body></html>')
-    return sujet, texte, corps_html
+    sujet = ('À rappeler — ' if rappel else '') + f"{origine} — {d['nom']}" + (f" — {contact}" if contact else '')
+    recu = date_longue(d['recu_le'])
+    details = [(l, v) for l, v in d.get('details') or []]
+    note = d.get('note') if d.get('details') is not None else d['message']
+
+    # version texte (messageries qui n'affichent pas le HTML)
+    texte = '\n'.join([f'{origine} reçue le {recu}.', *(['Le client souhaite être rappelé.'] if rappel else []), '',
+                       f"Nom : {d['nom']}", f"Téléphone : {d['telephone'] or 'non communiqué'}", f"E-mail : {d['email'] or 'non communiqué'}",
+                       *[f'{l} : {v}' for l, v in details], '', 'Message :', note or '(pas de message)', '',
+                       'Pour répondre par e-mail, utilisez le bouton « Répondre » : votre réponse part directement au client.' if d['email']
+                       else 'Le client n’a pas laissé d’e-mail : rappelez-le au numéro indiqué.'])
+
+    pastilles = pastille(e(origine), GLACIER, NUIT) + (pastille('À rappeler', COBALT, '#ffffff') if rappel else '')
+    boutons = (bouton(f"tel:{e(tel_lien(d['telephone']))}", f"Appeler {e(d['nom'])}", e(d['telephone'])) if d['telephone'] else '') + \
+              (bouton(f"mailto:{e(d['email'])}", 'Répondre par e-mail', e(d['email']), plein=not d['telephone']) if d['email'] else '')
+    lignes = ''.join(ligne_detail(l, v) for l, v in [('Téléphone', d['telephone'] or 'non communiqué'),
+                                                       ('E-mail', d['email'] or 'non communiqué'), *details])
+    bloc_message = (f'<p style="margin:26px 0 8px;{POLICE}font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:{DOUX};">Son message</p>'
+                    f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>'
+                    f'<td bgcolor="{PORCELAINE}" style="background:{PORCELAINE};border-left:4px solid {COBALT};border-radius:4px 10px 10px 4px;'
+                    f'padding:16px 18px;{POLICE}font-size:16px;line-height:1.6;color:{NUIT};white-space:pre-wrap;">{e(note)}</td></tr></table>') if note else ''
+    conseil = ('Répondez simplement à cet e-mail : votre réponse part directement chez le client.' if d['email']
+               else 'Ce client n’a pas laissé d’e-mail : rappelez-le au numéro ci-dessus.')
+    contenu = (f'<div style="margin:0 0 14px;">{pastilles}</div>'
+               f'<h1 class="titre" style="margin:0 0 6px;{POLICE}font-size:29px;line-height:1.2;font-weight:800;color:{NUIT};">{e(d["nom"])}</h1>'
+               f'<p style="margin:0 0 24px;{POLICE}font-size:14px;color:{DOUX};">Reçue le {e(recu)}</p>'
+               f'{boutons}'
+               f'<p style="margin:26px 0 4px;{POLICE}font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:{DOUX};">Sa demande</p>'
+               f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">{lignes}</table>'
+               f'{bloc_message}'
+               f'<p style="margin:26px 0 0;padding-top:18px;border-top:1px solid {GLACIER};{POLICE}font-size:14px;color:{DOUX};">{conseil}</p>')
+    pied = (f'Demande n° {e(d["id"])} · envoyée depuis le formulaire de <a href="{SITE_URL}/" style="color:{DOUX};">{e(SITE_URL.split("//")[-1])}</a>.<br>'
+            f'Une copie de sécurité est gardée {CONSERVATION_JOURS} jours sur le serveur, puis effacée.')
+    annonce = ' · '.join(x for x in [d['telephone'], ('à rappeler' if rappel else ''), (note or '')[:90]] if x)
+    return sujet, texte, cadre(sujet, annonce, 'Nouvelle demande depuis le site', contenu, pied)
 
 
-def envoyer_brevo(d: dict) -> tuple:
+def prenom_sur(nom: str) -> str:
+    """Le nom vient du visiteur : dans l'accusé de réception, on n'en garde qu'un mot sans adresse ni lien."""
+    mot = (nom.split() or [''])[0][:30]
+    return mot if re.fullmatch(r"[A-Za-zÀ-ÖØ-öø-ÿ'’-]{2,30}", mot) else ''
+
+
+def gabarit_accuse(d: dict) -> tuple:
+    """L'accusé de réception envoyé au visiteur. Il ne recopie JAMAIS ce que le visiteur a écrit (seulement un prénom
+    vérifié) : quelqu'un qui saisirait l'adresse d'un tiers ne peut pas se servir du site pour lui faire passer un texte."""
+    prenom, rappel, simulateur = prenom_sur(d['nom']), d.get('rappel') is True, d.get('formulaire') == 'simulateur'
+    sujet = f'Votre demande est bien arrivée — {ENTREPRISE}'
+    salut = f'Bonjour {prenom},' if prenom else 'Bonjour,'
+    quoi = 'votre estimation du simulateur' if simulateur else 'votre demande'
+    retour = 'Nous vous rappelons, comme vous l’avez demandé.' if rappel else 'Nous vous répondons par téléphone ou par e-mail.'
+    etapes = [('Nous étudions ' + quoi + '.', 'La puissance exacte et la pose se vérifient ensuite sur place.' if simulateur
+               else 'Nous la lisons avec attention avant de vous répondre.'),
+              (retour, 'Pensez à regarder vos courriers indésirables si vous attendez notre réponse par e-mail.'),
+              ('Nous convenons ensemble de la suite.', 'Visite, devis, questions : nous voyons avec vous ce qu’il faut pour avancer.')]
+    texte = '\n'.join([salut, '', f'{quoi[0].upper() + quoi[1:]} est bien arrivée chez {ENTREPRISE}. Merci de votre confiance.', '',
+                       *[f'{i}. {t} {s}' for i, (t, s) in enumerate(etapes, 1)], '',
+                       f'Une question d’ici là ? Appelez-nous au {TEL_ENTREPRISE}, ou répondez simplement à cet e-mail.', '',
+                       f'{ENTREPRISE} — {SITE_URL}', MENTION_SOCIETE, '',
+                       f'Vous recevez cet e-mail parce qu’une demande a été envoyée avec cette adresse sur {SITE_URL.split("//")[-1]}. '
+                       'Si ce n’est pas vous, ignorez-le : vous ne recevrez rien d’autre.'])
+    puces = ''.join(
+        f'<tr><td valign="top" width="44" style="padding:0 14px 18px 0;"><div style="width:32px;height:32px;border-radius:999px;background:{GLACIER};'
+        f'color:{COBALT};{POLICE}font-size:15px;font-weight:800;line-height:32px;text-align:center;">{i}</div></td>'
+        f'<td valign="top" style="padding:4px 0 18px;{POLICE}"><p style="margin:0;font-size:16px;font-weight:700;color:{NUIT};">{e(t)}</p>'
+        f'<p style="margin:3px 0 0;font-size:14px;line-height:1.55;color:{DOUX};">{e(s)}</p></td></tr>' for i, (t, s) in enumerate(etapes, 1))
+    contenu = (f'<h1 class="titre" style="margin:0 0 14px;{POLICE}font-size:29px;line-height:1.2;font-weight:800;color:{NUIT};">{e(salut)}</h1>'
+               f'<p style="margin:0 0 28px;font-size:17px;line-height:1.6;">{e(quoi[0].upper() + quoi[1:])} est bien arrivée chez {e(ENTREPRISE)}. '
+               f'Merci de votre confiance.</p>'
+               f'<p style="margin:0 0 14px;{POLICE}font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:{DOUX};">Et maintenant</p>'
+               f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">{puces}</table>'
+               f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:10px 0 0;"><tr>'
+               f'<td bgcolor="{PORCELAINE}" style="background:{PORCELAINE};border-radius:12px;padding:22px 22px 12px;">'
+               f'<p style="margin:0 0 14px;{POLICE}font-size:16px;font-weight:700;color:{NUIT};">Une question d’ici là ?</p>'
+               f'{bouton("tel:" + tel_lien(TEL_ENTREPRISE), "Appeler " + e(ENTREPRISE), e(TEL_ENTREPRISE))}'
+               f'<p style="margin:0 0 8px;{POLICE}font-size:14px;color:{DOUX};">Ou répondez simplement à cet e-mail.</p></td></tr></table>')
+    pied = (f'<a href="{SITE_URL}/" style="color:{NUIT};font-weight:700;text-decoration:none;">{e(ENTREPRISE)}</a> · '
+            f'<a href="{SITE_URL}/#simulateur" style="color:{DOUX};">Simulateur</a> · '
+            f'<a href="{SITE_URL}/confidentialite/" style="color:{DOUX};">Vos données</a><br>{e(MENTION_SOCIETE)}<br><br>'
+            f'Vous recevez cet e-mail parce qu’une demande a été envoyée avec cette adresse sur {e(SITE_URL.split("//")[-1])}. '
+            f'Si ce n’est pas vous, ignorez-le : vous ne recevrez rien d’autre.')
+    return sujet, texte, cadre(sujet, 'Nous avons bien reçu votre demande. ' + retour, 'Demande reçue', contenu, pied)
+
+
+def appel_brevo(message: dict, essais: int = 2) -> tuple:
     if not CLE:
         return False, 'BREVO_API_KEY absente'
-    sujet, texte, corps_html = gabarit(d)
-    message = {'sender': {'email': EXPEDITEUR, 'name': NOM_EXPEDITEUR}, 'to': [{'email': DESTINATAIRE}],
-               'subject': sujet, 'textContent': texte, 'htmlContent': corps_html, 'tags': [f'formulaire-{SLUG}']}
-    if COPIE:
-        message['bcc'] = [{'email': COPIE}]
-    if d['email']:
-        message['replyTo'] = {'email': d['email'], 'name': d['nom']}
     erreur = 'erreur inconnue'
-    for _ in range(2):
+    for _ in range(essais):
         try:
             requete = urllib.request.Request(URL_BREVO, data=json.dumps(message).encode(), method='POST', headers={
                 'api-key': CLE, 'content-type': 'application/json', 'accept': 'application/json'})
@@ -158,13 +296,49 @@ def envoyer_brevo(d: dict) -> tuple:
     return False, erreur
 
 
+def envoyer_brevo(d: dict) -> tuple:
+    sujet, texte, corps_html = gabarit(d)
+    message = {'sender': {'email': EXPEDITEUR, 'name': NOM_EXPEDITEUR}, 'to': [{'email': DESTINATAIRE}],
+               'subject': sujet, 'textContent': texte, 'htmlContent': corps_html, 'tags': [f'formulaire-{SLUG}']}
+    if COPIE:
+        message['bcc'] = [{'email': COPIE}]
+    if d['email']:
+        message['replyTo'] = {'email': d['email'], 'name': d['nom']}
+    return appel_brevo(message)
+
+
+_accuses: dict = {}
+
+
+def envoyer_accuse(d: dict) -> tuple:
+    """Une seule tentative (jamais de doublon chez le visiteur), 2 accusés au plus par adresse et par 24 h."""
+    if not ACCUSE or not d['email']:
+        return False, 'sans objet'
+    maintenant = time.time()
+    with _verrou:
+        recents = [t for t in _accuses.get(d['email'], []) if maintenant - t < 86400]
+        if len(recents) >= 2:
+            return False, 'limite par adresse'
+        _accuses[d['email']] = recents + [maintenant]
+    sujet, texte, corps_html = gabarit_accuse(d)
+    return appel_brevo({'sender': {'email': EXPEDITEUR, 'name': ENTREPRISE}, 'to': [{'email': d['email']}],
+                        'replyTo': {'email': DESTINATAIRE, 'name': ENTREPRISE}, 'subject': sujet, 'textContent': texte,
+                        'htmlContent': corps_html, 'tags': [f'accuse-{SLUG}']}, essais=1)
+
+
 def traiter_fichier(f: Path) -> bool:
     d = json.loads(f.read_text(encoding='utf-8'))
     ok, info = envoyer_brevo(d)
     if ok:
+        journal('envoyee', id=d['id'], brevo=info)
+        if 'accuse' not in d:  # l'accusé ne part qu'une fois, et seulement quand l'entreprise a bien reçu la demande
+            ok_a, info_a = envoyer_accuse(d)
+            d['accuse'] = 'envoye' if ok_a else info_a
+            if ok_a or info_a not in ('sans objet',):
+                journal('accuse', id=d['id'], resultat=d['accuse'])
+            f.write_text(json.dumps(d, ensure_ascii=False), encoding='utf-8')
         ENVOYEES.mkdir(parents=True, exist_ok=True)
         f.replace(ENVOYEES / f.name)
-        journal('envoyee', id=d['id'], brevo=info)
     else:
         journal('envoi-en-echec', id=d['id'], erreur=info, recu_le=d['recu_le'])
     return ok

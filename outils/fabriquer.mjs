@@ -354,6 +354,9 @@ ${PROD ? '' : `
     location = /404.html { internal; }
 
     # Formulaire de contact : relais local (outils/relais-formulaire.py), envoi par Brevo
+    # Images des e-mails : visibles sans le mot de passe de l'aperçu (une messagerie ne le connaît pas)
+    location ^~ /courriel/ { auth_basic off; expires 30d; try_files $uri =404; }
+
     location /f/ { proxy_pass http://127.0.0.1:8787; proxy_set_header Host $host; proxy_set_header X-Forwarded-For $remote_addr; client_max_body_size 64k; }
 
     location ~* ^/(polices|js/vendor)/ { expires 1y; try_files $uri =404; }
@@ -374,7 +377,9 @@ ${HOTE} {
 	encode zstd gzip
 ${PROD ? '' : `
 	# Aperçu : protégé par mot de passe et jamais indexé (STANDARD-SITE.md, SEO-INDEX-02)
-	basicauth {
+	# … sauf le logo des e-mails (courriel/) : une messagerie ne connaît pas le mot de passe
+	@prive not path /courriel/*
+	basicauth @prive {
 		qualiclim __EMPREINTE_MOT_DE_PASSE__
 	}
 `}
