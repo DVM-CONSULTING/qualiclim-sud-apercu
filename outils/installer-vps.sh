@@ -5,10 +5,11 @@
 #
 # Ce que fait ce script (on peut le relancer sans risque, il reprend où il en est) :
 #   1. vérifie que le domaine pointe bien vers ce serveur (sinon il s'arrête et dit quoi corriger chez OVH) ;
-#   2. installe nginx, git et certbot s'ils manquent (n'installe rien d'autre, ne touche à aucun autre site) ;
+#   2. si Caddy sert déjà d'autres sites : ajoute celui-ci à côté (HTTPS automatique) ; sinon installe nginx et certbot ;
+#      ne touche jamais aux autres sites, et remet l'ancienne configuration si la nouvelle est refusée ;
 #   3. récupère le site depuis GitHub dans /var/www/qualiclimsud ;
 #   4. obtient le certificat HTTPS gratuit (Let's Encrypt), renouvelé automatiquement ;
-#   5. pose la configuration nginx fabriquée avec le site (en-têtes de sécurité, page 404, www → sans www) ;
+#   5. pose la configuration fabriquée avec le site (en-têtes de sécurité, page 404, www → sans www) ;
 #   6. en mode aperçu : protège le site par un mot de passe, affiché une seule fois à la fin ;
 #   7. met le site à jour tout seul toutes les 5 minutes depuis GitHub (les fichiers du site, jamais la configuration).
 set -euo pipefail
@@ -49,17 +50,27 @@ if [ -n "$PB" ]; then stop "Le domaine ne pointe pas encore vers ce serveur. À 
 ok "le domaine pointe bien ici"
 
 etape "2/7 — Logiciels nécessaires"
-for s in apache2 caddy httpd; do
+for s in apache2 httpd; do
   if systemctl is-active --quiet "$s" 2>/dev/null; then stop "$s fonctionne déjà sur ce serveur : je ne l'installe pas par-dessus. Envoie ce message à Claude."; fi
 done
+SERVEUR="nginx"
+if systemctl is-active --quiet caddy 2>/dev/null; then
+  # Caddy sert déjà d'autres sites : on ajoute celui-ci à côté, sans toucher aux autres
+  [ -f /etc/caddy/Caddyfile ] || stop "Caddy fonctionne mais sans /etc/caddy/Caddyfile. Envoie ce message à Claude."
+  SERVEUR="caddy"
+elif ss -ltnp 2>/dev/null | grep -E ':(80|443) ' | grep -vq nginx; then
+  stop "Un autre programme occupe déjà le port 80 ou 443. Envoie ce message à Claude : $(ss -ltnp 2>/dev/null | grep -E ':(80|443) ' | tr '\n' ' ')"
+fi
 MANQUE=""
-command -v nginx >/dev/null || MANQUE="$MANQUE nginx"
 command -v git >/dev/null || MANQUE="$MANQUE git"
-command -v certbot >/dev/null || MANQUE="$MANQUE certbot"
 command -v openssl >/dev/null || MANQUE="$MANQUE openssl"
+if [ "$SERVEUR" = "nginx" ]; then
+  command -v nginx >/dev/null || MANQUE="$MANQUE nginx"
+  command -v certbot >/dev/null || MANQUE="$MANQUE certbot"
+fi
 if [ -n "$MANQUE" ]; then apt-get update -q && DEBIAN_FRONTEND=noninteractive apt-get install -y -q $MANQUE; fi
-systemctl enable --now nginx >/dev/null 2>&1 || true
-ok "nginx, git, certbot présents"
+if [ "$SERVEUR" = "nginx" ]; then systemctl enable --now nginx >/dev/null 2>&1 || true; fi
+ok "serveur web : $SERVEUR ; git présent"
 
 etape "3/7 — Récupération du site"
 if [ -d "$RACINE/.git" ]; then
@@ -68,61 +79,86 @@ else
   rm -rf "$RACINE"; git clone -q --depth 1 --branch "$BRANCHE" "$DEPOT" "$RACINE"
 fi
 chmod -R a+rX "$RACINE"
-[ -f "$RACINE/index.html" ] && [ -f "$RACINE/outils/nginx-qualiclimsud.conf" ] || stop "Le site récupéré est incomplet. Envoie ce message à Claude."
+[ -f "$RACINE/index.html" ] && [ -f "$RACINE/outils/nginx-qualiclimsud.conf" ] && [ -f "$RACINE/outils/caddy-qualiclimsud.caddy" ] || stop "Le site récupéré est incomplet. Envoie ce message à Claude."
 ok "site dans $RACINE (version $(git -C "$RACINE" log -1 --format=%h))"
 
-etape "4/7 — Certificat HTTPS"
-mkdir -p "$ACME"
-if [ ! -f "/etc/letsencrypt/live/${DOMAINE}/fullchain.pem" ]; then
-  # configuration provisoire : seulement de quoi prouver à Let's Encrypt que le domaine est ici
-  cat > "$CONF" <<EOF
-server {
-    listen 80;
-    listen [::]:80;
-    server_name ${DOMAINE} www.${DOMAINE};
-    location ^~ /.well-known/acme-challenge/ { root ${ACME}; default_type text/plain; }
-    location / { return 503; }
-}
-EOF
+NOUVEAU_MDP=""
+nouveau_mdp() { openssl rand -base64 18 | tr -dc 'A-Za-z0-9' | head -c 16; }
+
+if [ "$SERVEUR" = "caddy" ]; then
+  etape "4/7 — Certificat HTTPS"
+  ok "Caddy obtient et renouvelle le certificat tout seul"
+
+  etape "5/7 — Configuration du site (Caddy)"
+  CCONF="/etc/caddy/qualiclimsud.caddy"
+  ANCIEN_HASH=""
+  if [ -f "$CCONF" ]; then ANCIEN_HASH=$(awk '$1=="qualiclim"{print $2; exit}' "$CCONF" || true); fi
+  SAUVE_F=$(mktemp); cp /etc/caddy/Caddyfile "$SAUVE_F"
+  SAUVE_C=$(mktemp); if [ -f "$CCONF" ]; then cp "$CCONF" "$SAUVE_C"; else : > "$SAUVE_C"; fi
+  cp "$RACINE/outils/caddy-qualiclimsud.caddy" "$CCONF"
+
+  etape "6/7 — Mot de passe de l'aperçu"
+  if grep -q "__EMPREINTE_MOT_DE_PASSE__" "$CCONF"; then
+    HASH="$ANCIEN_HASH"
+    if [ -z "$HASH" ]; then NOUVEAU_MDP=$(nouveau_mdp); HASH=$(caddy hash-password --plaintext "$NOUVEAU_MDP"); fi
+    sed -i "s|__EMPREINTE_MOT_DE_PASSE__|${HASH}|" "$CCONF"
+    ok "aperçu protégé (identifiant : qualiclim)"
+  else
+    ok "site public (mode production) : pas de mot de passe"
+  fi
+  grep -q "^import $CCONF" /etc/caddy/Caddyfile || printf '\n# Site Qualiclim Sud (outils/installer-vps.sh)\nimport %s\n' "$CCONF" >> /etc/caddy/Caddyfile
+  if ! caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile >/dev/null 2>&1; then
+    cp "$SAUVE_F" /etc/caddy/Caddyfile
+    if [ -s "$SAUVE_C" ]; then cp "$SAUVE_C" "$CCONF"; else rm -f "$CCONF"; fi
+    stop "Caddy refuse la configuration : l'ancienne a été remise, les autres sites ne sont pas touchés. Envoie ce message à Claude."
+  fi
+  systemctl reload caddy
+  ok "Caddy rechargé (les autres sites continuent de fonctionner)"
+else
+  etape "4/7 — Certificat HTTPS"
+  mkdir -p "$ACME"
+  if [ ! -f "/etc/letsencrypt/live/${DOMAINE}/fullchain.pem" ]; then
+    # configuration provisoire : seulement de quoi prouver à Let's Encrypt que le domaine est ici
+    printf 'server {\n    listen 80;\n    listen [::]:80;\n    server_name %s www.%s;\n    location ^~ /.well-known/acme-challenge/ { root %s; default_type text/plain; }\n    location / { return 503; }\n}\n' "$DOMAINE" "$DOMAINE" "$ACME" > "$CONF"
+    sans_ipv6 "$CONF"
+    ln -sf "$CONF" "/etc/nginx/sites-enabled/${DOMAINE}"
+    nginx -t -q || { rm -f "/etc/nginx/sites-enabled/${DOMAINE}"; stop "nginx refuse la configuration provisoire (rien n'a été changé pour les autres sites). Envoie ce message à Claude."; }
+    systemctl reload nginx
+    certbot certonly --webroot -w "$ACME" -d "$DOMAINE" -d "www.$DOMAINE" --non-interactive --agree-tos -m "$CONTACT" --deploy-hook "systemctl reload nginx" \
+      || stop "Let's Encrypt n'a pas pu délivrer le certificat (souvent : DNS pas encore à jour). Attends 30 minutes et relance la même commande."
+  fi
+  ok "certificat valable (renouvelé automatiquement par certbot)"
+
+  etape "5/7 — Configuration du site (nginx)"
+  SAUVE=""
+  if [ -f "$CONF" ]; then SAUVE=$(mktemp); cp "$CONF" "$SAUVE"; fi
+  cp "$RACINE/outils/nginx-qualiclimsud.conf" "$CONF"
   sans_ipv6 "$CONF"
   ln -sf "$CONF" "/etc/nginx/sites-enabled/${DOMAINE}"
-  nginx -t -q || { rm -f "/etc/nginx/sites-enabled/${DOMAINE}"; stop "nginx refuse la configuration provisoire (rien n'a été changé pour les autres sites). Envoie ce message à Claude."; }
-  systemctl reload nginx
-  certbot certonly --webroot -w "$ACME" -d "$DOMAINE" -d "www.$DOMAINE" --non-interactive --agree-tos -m "$CONTACT" --deploy-hook "systemctl reload nginx" \
-    || stop "Let's Encrypt n'a pas pu délivrer le certificat (souvent : DNS pas encore à jour). Attends 30 minutes et relance la même commande."
-fi
-ok "certificat valable (renouvelé automatiquement par certbot)"
 
-etape "5/7 — Configuration du site"
-SAUVE=""
-[ -f "$CONF" ] && SAUVE=$(mktemp) && cp "$CONF" "$SAUVE"
-cp "$RACINE/outils/nginx-qualiclimsud.conf" "$CONF"
-sans_ipv6 "$CONF"
-ln -sf "$CONF" "/etc/nginx/sites-enabled/${DOMAINE}"
-
-etape "6/7 — Mot de passe de l'aperçu"
-NOUVEAU_MDP=""
-if grep -q "auth_basic_user_file" "$CONF"; then
-  if [ ! -s "$MDP" ]; then
-    NOUVEAU_MDP=$(openssl rand -base64 18 | tr -dc 'A-Za-z0-9' | head -c 16)
-    printf 'qualiclim:%s\n' "$(openssl passwd -apr1 "$NOUVEAU_MDP")" > "$MDP"
-    chown root:www-data "$MDP" 2>/dev/null || true; chmod 640 "$MDP"
+  etape "6/7 — Mot de passe de l'aperçu"
+  if grep -q "auth_basic_user_file" "$CONF"; then
+    if [ ! -s "$MDP" ]; then
+      NOUVEAU_MDP=$(nouveau_mdp)
+      printf 'qualiclim:%s\n' "$(openssl passwd -apr1 "$NOUVEAU_MDP")" > "$MDP"
+      chown root:www-data "$MDP" 2>/dev/null || true; chmod 640 "$MDP"
+    fi
+    ok "aperçu protégé (identifiant : qualiclim)"
+  else
+    ok "site public (mode production) : pas de mot de passe"
   fi
-  ok "aperçu protégé (identifiant : qualiclim)"
-else
-  ok "site public (mode production) : pas de mot de passe"
+  if ! nginx -t -q; then
+    if [ -n "$SAUVE" ]; then cp "$SAUVE" "$CONF"; else rm -f "/etc/nginx/sites-enabled/${DOMAINE}"; fi
+    stop "nginx refuse la configuration du site : l'ancienne a été remise, les autres sites ne sont pas touchés. Envoie ce message à Claude."
+  fi
+  systemctl reload nginx
+  ok "nginx rechargé"
 fi
-if ! nginx -t -q; then
-  if [ -n "$SAUVE" ]; then cp "$SAUVE" "$CONF"; else rm -f "/etc/nginx/sites-enabled/${DOMAINE}"; fi
-  stop "nginx refuse la configuration du site : l'ancienne a été remise, les autres sites ne sont pas touchés. Envoie ce message à Claude."
-fi
-systemctl reload nginx
-ok "nginx rechargé"
 
 etape "7/7 — Mise à jour automatique"
 cat > /usr/local/bin/qualiclim-maj <<EOF
 #!/usr/bin/env bash
-# Met à jour les fichiers du site Qualiclim Sud depuis GitHub (jamais la configuration nginx).
+# Met à jour les fichiers du site Qualiclim Sud depuis GitHub (jamais la configuration du serveur web).
 set -e
 cd "$RACINE"
 git fetch -q origin "$BRANCHE"

@@ -42,7 +42,7 @@ Sur le serveur (Debian ou Ubuntu), une commande :
 
     curl -fsSL https://raw.githubusercontent.com/DVM-CONSULTING/qualiclim-sud-apercu/main/outils/installer-vps.sh | sudo bash
 
-Le script vérifie le DNS, installe nginx, git et certbot s'ils manquent (refuse de s'installer par-dessus Apache ou
+Le script vérifie le DNS ; si Caddy sert déjà d'autres sites, il ajoute celui-ci à côté (`outils/caddy-qualiclimsud.caddy`), sinon il installe nginx, git et certbot (refuse Apache ou
 Caddy), récupère le site dans `/var/www/qualiclimsud`, obtient le certificat Let's Encrypt (webroot), pose
 `outils/nginx-qualiclimsud.conf` (fabriqué par `fabriquer.mjs` : en-têtes du §3, 404, www → sans www, coulisses du
 dépôt jamais servies), protège l'aperçu par mot de passe (affiché une fois) et met les fichiers à jour toutes les 5 min.

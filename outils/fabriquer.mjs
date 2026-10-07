@@ -359,4 +359,52 @@ ${PROD ? '' : `
 }
 `);
 
+// ------------------------------------------------------------------ serveur VPS déjà équipé de Caddy : même contrat que nginx
+ecrire('outils/caddy-qualiclimsud.caddy', `# Fabriqué par outils/fabriquer.mjs (mode ${PROD ? 'production' : 'aperçu'}) — ne pas modifier à la main.
+# Posé par outils/installer-vps.sh dans /etc/caddy/qualiclimsud.caddy (importé par le Caddyfile). HTTPS automatique par Caddy.
+www.${HOTE} {
+	redir https://${HOTE}{uri} permanent
+}
+
+${HOTE} {
+	root * /var/www/qualiclimsud
+	encode zstd gzip
+${PROD ? '' : `
+	# Aperçu : protégé par mot de passe et jamais indexé (STANDARD-SITE.md, SEO-INDEX-02)
+	basicauth {
+		qualiclim __EMPREINTE_MOT_DE_PASSE__
+	}
+`}
+	# En-têtes de sécurité (STANDARD-SITE.md §3)
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		Content-Security-Policy "${csp}"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"${PROD ? '' : '\n\t\tX-Robots-Tag "noindex, nofollow"'}
+		-Server
+	}
+	@longue path /polices/* /js/vendor/*
+	header @longue Cache-Control "public, max-age=31536000, immutable"
+	@medias path *.webp *.jpg *.png *.ico *.mp4 *.webm
+	header @medias Cache-Control "public, max-age=2592000"
+
+	# Les coulisses du dépôt ne sont jamais servies ; la page 404 ne se demande pas directement
+	@interne path_regexp interne ^/(\\..*|outils/.*|contenus/.*|outil-stock/.*|configuration\\.json|_headers|404\\.html|.*\\.md|.*\\.mjs)$
+	error @interne 404
+
+	file_server
+
+	# Vraie page introuvable, avec le statut 404 (FUNC-404-01)
+	handle_errors {
+		@introuvable expression {err.status_code} == 404
+		handle @introuvable {
+			rewrite * /404.html
+			file_server
+		}
+	}
+}
+`);
+
 console.log(`Fabriqué en mode ${PROD ? 'PRODUCTION' : 'aperçu'} — mesure ${MESURE ? C.mesureId : 'absente'}, Search Console ${C.searchConsole ? 'posée' : 'absente'}, formulaire ${C.formulaire ? origineFormulaire : 'non relié'}.`);
