@@ -8,12 +8,7 @@ qualiclimsud.fr {
 	root * /var/www/qualiclimsud
 	encode zstd gzip
 
-	# Aperçu : protégé par mot de passe et jamais indexé (STANDARD-SITE.md, SEO-INDEX-02)
-	# … sauf le logo des e-mails (courriel/) : une messagerie ne connaît pas le mot de passe
-	@prive not path /courriel/*
-	basicauth @prive {
-		qualiclim __EMPREINTE_MOT_DE_PASSE__
-	}
+	# Aperçu ouvert (configuration.json, "apercuOuvert": true) : sans mot de passe, jamais indexé (en-tête X-Robots-Tag ci-dessous)
 
 	# En-têtes de sécurité (STANDARD-SITE.md §3)
 	header {

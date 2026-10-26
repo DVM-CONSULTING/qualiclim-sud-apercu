@@ -37,7 +37,11 @@ if (C.searchConsole && !/^[A-Za-z0-9_-]{20,90}$/.test(C.searchConsole)) echec('�
 if (C.formulaire && !/^https:\/\/[a-z0-9.-]+(\/[a-zA-Z0-9._~-]+)*$/.test(C.formulaire)) echec('« formulaire » : vide, ou l\'adresse https du relais (sans /f/<slug>).');
 if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(C.slug || '')) echec('« slug » : minuscules et tirets.');
 if (!/^\d{4}-\d{2}-\d{2}$/.test(C.majContenus || '')) echec('« majContenus » : date AAAA-MM-JJ.');
+if (C.apercuOuvert !== undefined && typeof C.apercuOuvert !== 'boolean') echec('« apercuOuvert » : true (aperçu sans mot de passe, toujours caché à Google) ou false.');
 const PROD = C.mode === 'production', MESURE = Boolean(C.mesureId), D = C.domaine;
+// Aperçu ouvert : sans mot de passe sur le serveur, mais toujours noindex (balise, en-tête, robots.txt). Choix de David
+// le 26/10/2026, écart assumé avec STANDARD-SITE.md (« protégé par mot de passe quand il contient des données client »).
+const OUVERT = !PROD && C.apercuOuvert === true;
 const MOIS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
 const [an, mo, jo] = C.majContenus.split('-').map(Number);
 const MAJ = `${jo === 1 ? '1er' : jo} ${MOIS[mo - 1]} ${an}`;
@@ -329,7 +333,10 @@ server {
     root /var/www/qualiclimsud;
     index index.html;
     charset utf-8;
-${PROD ? '' : `
+${PROD ? '' : OUVERT ? `
+    # Aperçu ouvert (configuration.json, "apercuOuvert": true) : sans mot de passe, jamais indexé (SEO-INDEX-02)
+    add_header X-Robots-Tag "noindex, nofollow" always;
+` : `
     # Aperçu : protégé par mot de passe et jamais indexé (STANDARD-SITE.md, SEO-INDEX-02)
     auth_basic "Apercu Qualiclim Sud";
     auth_basic_user_file /etc/nginx/qualiclimsud.htpasswd;
@@ -375,7 +382,9 @@ www.${HOTE} {
 ${HOTE} {
 	root * /var/www/qualiclimsud
 	encode zstd gzip
-${PROD ? '' : `
+${PROD ? '' : OUVERT ? `
+	# Aperçu ouvert (configuration.json, "apercuOuvert": true) : sans mot de passe, jamais indexé (en-tête X-Robots-Tag ci-dessous)
+` : `
 	# Aperçu : protégé par mot de passe et jamais indexé (STANDARD-SITE.md, SEO-INDEX-02)
 	# … sauf le logo des e-mails (courriel/) : une messagerie ne connaît pas le mot de passe
 	@prive not path /courriel/*
@@ -418,4 +427,4 @@ ${PROD ? '' : `
 }
 `);
 
-console.log(`Fabriqué en mode ${PROD ? 'PRODUCTION' : 'aperçu'} — mesure ${MESURE ? C.mesureId : 'absente'}, Search Console ${C.searchConsole ? 'posée' : 'absente'}, formulaire ${C.formulaire ? origineFormulaire : 'non relié'}.`);
+console.log(`Fabriqué en mode ${PROD ? 'PRODUCTION' : OUVERT ? 'aperçu OUVERT (sans mot de passe, caché à Google)' : 'aperçu'} — mesure ${MESURE ? C.mesureId : 'absente'}, Search Console ${C.searchConsole ? 'posée' : 'absente'}, formulaire ${C.formulaire ? origineFormulaire : 'non relié'}.`);
