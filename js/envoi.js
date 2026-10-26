@@ -20,8 +20,12 @@
   const debut = Date.now();
   const signal = (fn, nom) => { try { if (typeof window[fn] === 'function') window[fn](nom); } catch (e) { /* le kit ne doit jamais casser l'envoi */ } };
 
+  // Copie de travail sur GitHub Pages : le relais (sur le domaine du site, derrière le mot de passe de l'aperçu)
+  // ne peut pas lui répondre. Elle affiche donc le message d'aperçu au lieu d'un faux échec, et n'envoie rien.
+  const copieDeTravail = /(^|\.)github\.io$/.test(location.hostname);
+
   async function envoyer(champs, nom) {
-    if (!adresse || !slug) return { ok: false, nonRelie: true };
+    if (!adresse || !slug || copieDeTravail) return { ok: false, nonRelie: true };
     const corps = { nom: champs.nom || '', telephone: champs.telephone || '', email: champs.email || '', message: champs.message || '', _slug: slug, _ts: String(debut), site_web: champs.site_web || '' };
     // facultatif, pour un e-mail mieux rangé (le relais du VPS les lit, le Worker les ignore) : le message reste complet
     if (champs.details) Object.assign(corps, { formulaire: nom, rappel: Boolean(champs.rappel), details: champs.details, note: champs.note || '' });
@@ -38,5 +42,5 @@
       return { ok: false, erreurs: [] };
     } finally { if (minuteur) clearTimeout(minuteur); }
   }
-  window.QualiclimEnvoi = { envoyer, relie: () => Boolean(adresse && slug) };
+  window.QualiclimEnvoi = { envoyer, relie: () => Boolean(adresse && slug && !copieDeTravail) };
 })();
