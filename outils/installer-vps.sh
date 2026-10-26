@@ -106,7 +106,7 @@ if [ "$SERVEUR" = "caddy" ]; then
     sed -i "s|__EMPREINTE_MOT_DE_PASSE__|${HASH}|" "$CCONF"
     ok "aperçu protégé (identifiant : qualiclim)"
   else
-    ok "site public (mode production) : pas de mot de passe"
+    ok "pas de mot de passe (mode production, ou aperçu ouvert : toujours caché à Google)"
   fi
   grep -q "^import $CCONF" /etc/caddy/Caddyfile || printf '\n# Site Qualiclim Sud (outils/installer-vps.sh)\nimport %s\n' "$CCONF" >> /etc/caddy/Caddyfile
   if ! caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile >/dev/null 2>&1; then
@@ -147,7 +147,7 @@ else
     fi
     ok "aperçu protégé (identifiant : qualiclim)"
   else
-    ok "site public (mode production) : pas de mot de passe"
+    ok "pas de mot de passe (mode production, ou aperçu ouvert : toujours caché à Google)"
   fi
   if ! nginx -t -q; then
     if [ -n "$SAUVE" ]; then cp "$SAUVE" "$CONF"; else rm -f "/etc/nginx/sites-enabled/${DOMAINE}"; fi
