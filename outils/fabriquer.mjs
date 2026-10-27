@@ -136,7 +136,7 @@ function pied(r) {
     </div>
     <div class="pied__colonnes">
       <div><p class="pied__t">Qualiclim Sud</p><p>Vente et pose de climatisation réversible, principalement Mitsubishi Electric et Mundoclima, de Fréjus à Cannes.</p><p class="pied__entreprise">QUALICLIM, SASU au capital de 100&nbsp;€ · SIREN 944&nbsp;335&nbsp;249 · Dirigeant : Michaël Musto</p></div>
-      <div><p class="pied__t">Contact</p><p><a href="tel:+33634493249">06 34 49 32 49</a></p><p><a href="mailto:contact@qualiclimsud.fr">contact@qualiclimsud.fr</a></p><p>Dépôt à Fréjus · <span class="a-confirmer">[À CONFIRMER — CLIENT : adresse du dépôt]</span></p></div>
+      <div><p class="pied__t">Contact</p><p><a href="tel:+33634493249">06 34 49 32 49</a></p><p><a href="mailto:contact@qualiclimsud.fr">contact@qualiclimsud.fr</a></p></div>
       <nav aria-label="Rubriques du site"><p class="pied__t">Rubriques</p><ul>
         <li><a href="${r}#climatisation">La climatisation réversible</a></li>
         <li><a href="${r}#simulateur">Simulateur de puissance</a></li>

@@ -458,7 +458,7 @@ p { margin: 0; }
 .zone__communes li { font: 500 13px/1 var(--f); padding: 10px 14px; border-radius: 20px; border: 1px solid rgba(244,242,238,.35); background: rgba(14,29,51,.35); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); transition: background .4s, color .4s; }
 .zone__communes li.atteinte { background: var(--porcelaine); color: var(--espresso); }
 .zone__credit { font: 400 11px/1.4 var(--f) !important; opacity: .7; margin-top: 14px; }
-.zone__depot { padding: clamp(80px, 10vw, 140px) var(--g); grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); align-items: center; gap: 40px 60px; }
+.zone__depot { padding: clamp(80px, 10vw, 140px) var(--g); grid-template-columns: minmax(0, 1fr); justify-items: start; align-items: center; gap: 40px 60px; }
 .depot-carte { background: #13253f; border-radius: 10px; overflow: hidden; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 .depot-carte__vue { min-height: 300px; background: #2b4f74 url("../img/vue-frejus.jpg") center / cover no-repeat; }
 .depot-carte__corps { padding: 28px; display: grid; gap: 16px; align-content: start; }
@@ -689,3 +689,11 @@ html.visionneuse-ouverte { overflow: hidden; }
 .pile__visuel--vente img { object-position: 50% 30%; }
 .pile__visuel--pose img { object-position: 15% 22%; }
 .pile__visuel--apres img { object-position: 40% 35%; }
+
+/* Marques : discrètes, toutes les grandes en une ligne */
+.marques__grille { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-top: 1px solid rgba(244,242,238,.14); }
+.marques__grille li { font: 500 clamp(18px, 1.8vw, 24px)/1.2 var(--f); letter-spacing: -0.02em; padding: 22px 0; border-bottom: 1px solid rgba(244,242,238,.14); }
+/* Simulateur : deux étapes, les questions écartées gardent leur valeur par défaut */
+.simu [hidden] { display: none !important; }
+.simu__etapes { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+@media (max-width: 760px) { .marques__grille { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

@@ -215,7 +215,7 @@
 </script>
 <!-- /commun:tete -->
 <link rel="preload" as="image" href="img/poster.jpg">
-<link rel="stylesheet" href="css/site.css?v=922151ca89">
+<link rel="stylesheet" href="css/site.css?v=4ccc894bd4">
 <link rel="stylesheet" href="css/reversible.css?v=9c5205fbbe">
 <script>document.documentElement.classList.add('js');</script>
 <script type="application/ld+json">
@@ -284,7 +284,7 @@
       "name": "Où intervenez-vous ?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Notre dépôt est à Fréjus. Nous posons sur toute la côte, de Fréjus à Cannes : Fréjus, Saint-Raphaël et Agay, Théoule-sur-Mer, Mandelieu-la-Napoule et Cannes. Votre commune n'y est pas ? Appelez-nous au 06 34 49 32 49 : nous vous dirons si nous pouvons venir chez vous."
+        "text": "Nous posons sur toute la côte, de Fréjus à Cannes : Fréjus, Saint-Raphaël et Agay, Théoule-sur-Mer, Mandelieu-la-Napoule et Cannes. Votre commune n'y est pas ? Appelez-nous au 06 34 49 32 49 : nous vous dirons si nous pouvons venir chez vous."
       }
     }
   ]
@@ -347,7 +347,7 @@
         </li>
         <li class="temp arrivee">
           <p class="arrivee__titre"><span class="arrivee__kicker">Qualiclim Sud arrive à</span><span class="affiche">Fréjus</span></p>
-          <div class="ligne-utile"><span>Notre dépôt</span><span>De Fréjus à Cannes</span><span class="a-confirmer">[À CONFIRMER — CLIENT : adresse, horaires, accueil du public]</span></div>
+          <div class="ligne-utile"><span>Vente et pose</span><span>De Fréjus à Cannes</span></div>
           <div class="details">
             <p class="utile" style="max-width:40ch">Vente et pose de climatisation réversible, sur toute la côte de Fréjus à Cannes.</p>
             <div class="actions">
@@ -376,7 +376,6 @@
         <h2 id="t-metier" class="titre-mur" data-titre>Vente et pose de climatisations réversibles.</h2>
         <p class="manifeste__texte" data-mots>Une chambre sous les toits à rafraîchir l'été, un séjour à chauffer l'hiver. Qualiclim Sud vend et pose des climatisations réversibles, principalement Mitsubishi Electric et Mundoclima, sur toute la côte de Fréjus à Cannes.</p>
         <dl class="reperes-cles">
-          <div data-apparait><dt>Dépôt</dt><dd>Fréjus</dd></div>
           <div data-apparait><dt>Secteur</dt><dd>De Fréjus à Cannes</dd></div>
           <div data-apparait><dt>Marques</dt><dd>Mitsubishi Electric · Mundoclima</dd></div>
           <div data-apparait><dt>Téléphone</dt><dd><a href="tel:+33634493249">06 34 49 32 49</a></dd></div>
@@ -460,13 +459,12 @@
       <div class="cadre">
         <div class="tete tete--sombre">
           <p class="sur-titre"><span>04</span>Les marques</p>
-          <h2 id="t-marques" data-titre>Les marques que nous posons.</h2>
-          <p>Principalement Mitsubishi Electric et Mundoclima. Modèles, puissances et garanties&nbsp;: <span class="a-confirmer">[À CONFIRMER — CLIENT : modèles, puissances et garanties]</span></p>
+          <h2 id="t-marques" data-titre>Les grandes marques de climatisation.</h2>
+          <p>Nous vous conseillons la marque et le modèle qui conviennent à votre logement. Modèles, puissances et garanties&nbsp;: <span class="a-confirmer">[À CONFIRMER — CLIENT : modèles, puissances et garanties]</span></p>
         </div>
-        <ol class="marques__liste">
-          <li class="marque-ligne"><span class="n">01</span><p class="marque-nom" data-remplit>Mitsubishi</p><p class="utile">Mitsubishi Electric</p></li>
-          <li class="marque-ligne"><span class="n">02</span><p class="marque-nom" data-remplit>Mundoclima</p><p class="utile">&nbsp;</p></li>
-        </ol>
+        <ul class="marques__grille" aria-label="Marques proposées">
+          <li>Mitsubishi Electric</li><li>Daikin</li><li>Toshiba</li><li>Panasonic</li><li>GREE</li><li>Mundoclima</li><li>Atlantic</li><li>Hisense</li>
+        </ul>
       </div>
     </section>
 
@@ -475,8 +473,8 @@
       <div class="simu__tete">
         <p class="sur-titre"><span>05</span>Simulateur</p>
         <h2 id="t-simu" class="titre-mur" data-titre>Votre climatisation, estimée.</h2>
-        <p>Décrivez votre logement, vos pièces et l'emplacement des unités : la pièce se dessine, l'air se met à souffler, la puissance s'affiche. C'est une estimation : un technicien la valide avant tout devis.</p>
-        <ul class="simu__promesses" aria-label="En bref"><li>4 étapes</li><li>2 minutes</li><li>Sans inscription</li></ul>
+        <p>Choisissez votre logement et la taille de la pièce : la puissance s'affiche tout de suite. Laissez-nous votre numéro, nous vous rappelons. C'est une estimation : un technicien la valide avant tout devis.</p>
+        <ul class="simu__promesses" aria-label="En bref"><li>2 étapes</li><li>30 secondes</li><li>Sans inscription</li></ul>
       </div>
       <noscript><p class="simu__sansjs">Le simulateur a besoin de JavaScript. Le plus simple reste de nous appeler au <a href="tel:+33634493249">06 34 49 32 49</a>.</p></noscript>
       <div class="simu__app" id="simu-app">
@@ -493,10 +491,10 @@
         </div>
         <form class="simu__panneau" id="simu" novalidate>
           <ol class="simu__etapes" aria-label="Étapes du simulateur">
-            <li><button type="button" data-aller="0"><span>01</span>Logement</button></li>
-            <li><button type="button" data-aller="1"><span>02</span>Pièces</button></li>
-            <li><button type="button" data-aller="2"><span>03</span>Installation</button></li>
-            <li><button type="button" data-aller="3"><span>04</span>Estimation</button></li>
+            <li><button type="button" data-aller="0"><span>01</span>Votre pièce</button></li>
+            <li hidden><button type="button" data-aller="1" tabindex="-1"><span>02</span>Pièces</button></li>
+            <li hidden><button type="button" data-aller="2" tabindex="-1"><span>03</span>Installation</button></li>
+            <li><button type="button" data-aller="3"><span>02</span>Votre demande</button></li>
           </ol>
           <div class="simu__barre" aria-hidden="true"><i id="simu-barre"></i></div>
           <div class="simu__fenetre">
@@ -507,7 +505,7 @@
                   <label><input id="s-type-maison" type="radio" name="type" value="maison" checked><span>Une maison</span></label>
                   <label><input id="s-type-appartement" type="radio" name="type" value="appartement"><span>Un appartement</span></label>
                 </div></div>
-              <div class="q"><p class="q__t" id="q-statut">Vous êtes</p>
+              <div class="q" hidden><p class="q__t" id="q-statut">Vous êtes</p>
                 <div class="choix" role="radiogroup" aria-labelledby="q-statut">
                   <label><input id="s-statut-proprietaire" type="radio" name="statut" value="proprietaire" checked><span>Propriétaire</span></label>
                   <label><input id="s-statut-locataire" type="radio" name="statut" value="locataire"><span>Locataire</span></label>
@@ -515,19 +513,19 @@
                 <label class="coche" data-si="statut=locataire" hidden><input id="s-accordProprietaire" type="checkbox" name="accordProprietaire"><span>J'ai l'accord écrit de mon propriétaire</span></label>
                 <label class="coche" data-si="type=appartement" hidden><input id="s-autorisationCopropriete" type="checkbox" name="autorisationCopropriete"><span>La copropriété a déjà donné son accord pour l'unité extérieure</span></label>
               </div>
-              <div class="q"><p class="q__t" id="q-age">Le logement a été achevé il y a</p>
+              <div class="q" hidden><p class="q__t" id="q-age">Le logement a été achevé il y a</p>
                 <div class="choix" role="radiogroup" aria-labelledby="q-age">
                   <label><input id="s-age-vieux" type="radio" name="age" value="vieux" checked><span>Plus de 2 ans</span></label>
                   <label><input id="s-age-neuf" type="radio" name="age" value="neuf"><span>Moins de 2 ans</span></label>
                   <label><input id="s-age-inconnu" type="radio" name="age" value="inconnu"><span>Je ne sais pas</span></label>
                 </div></div>
-              <div class="q"><p class="q__t" id="q-iso">L'isolation est plutôt</p>
+              <div class="q" hidden><p class="q__t" id="q-iso">L'isolation est plutôt</p>
                 <div class="choix" role="radiogroup" aria-labelledby="q-iso">
                   <label><input id="s-isolation-recente" type="radio" name="isolation" value="recente"><span>Récente</span></label>
                   <label><input id="s-isolation-moyenne" type="radio" name="isolation" value="moyenne" checked><span>Moyenne</span></label>
                   <label><input id="s-isolation-ancienne" type="radio" name="isolation" value="ancienne"><span>Ancienne</span></label>
                 </div></div>
-              <div class="q"><p class="q__t" id="q-etage">Dernier étage ou sous les combles</p>
+              <div class="q" hidden><p class="q__t" id="q-etage">Dernier étage ou sous les combles</p>
                 <div class="choix" role="radiogroup" aria-labelledby="q-etage">
                   <label><input id="s-dernierEtage-oui" type="radio" name="dernierEtage" value="oui"><span>Oui</span></label>
                   <label><input id="s-dernierEtage-non" type="radio" name="dernierEtage" value="non" checked><span>Non</span></label>
@@ -538,13 +536,13 @@
                   <label><input id="s-besoin-chaud" type="radio" name="besoin" value="chaud"><span>Chauffer</span></label>
                   <label><input id="s-besoin-les_deux" type="radio" name="besoin" value="les_deux" checked><span>Les deux</span></label>
                 </div></div>
-              <label class="champ" for="s-cp">Code postal<input id="s-cp" name="codePostal" inputmode="numeric" autocomplete="postal-code" maxlength="5" placeholder="83600"></label>
+              <label class="champ" for="s-cp" hidden>Code postal<input id="s-cp" name="codePostal" inputmode="numeric" autocomplete="postal-code" maxlength="5" placeholder="83600"></label>
+              <div id="simu-pieces" class="pieces"></div>
             </fieldset>
 
             <fieldset class="etape" data-etape="1" hidden>
               <legend>Les pièces à équiper</legend>
-              <div id="simu-pieces" class="pieces"></div>
-              <button type="button" class="pilule pilule--onglet ajout" id="ajout-piece">Ajouter une pièce</button>
+              <button type="button" class="pilule pilule--onglet ajout" id="ajout-piece" hidden>Ajouter une pièce</button>
             </fieldset>
 
             <fieldset class="etape" data-etape="2" hidden>
@@ -597,14 +595,14 @@
             <div class="etape" data-etape="3" hidden>
               <div id="simu-resultat" class="resultat"></div>
               <div class="envoi">
-                <h3>Envoyer mon estimation</h3>
-                <p class="utile">Envoyez-la à Qualiclim Sud : nous vous répondons par e-mail, avec ce qu'un technicien doit vérifier chez vous.</p>
+                <h3>Être rappelé gratuitement</h3>
+                <p class="utile">Laissez-nous votre numéro : nous vous rappelons pour affiner votre projet, sans engagement.</p>
                 <label class="champ" for="s-nom">Votre nom<input id="s-nom" name="nom" autocomplete="name"></label>
-                <label class="champ" for="s-mail">Votre e-mail<input id="s-mail" name="email" type="email" autocomplete="email"></label>
-                <label class="champ" for="s-tel">Votre téléphone (facultatif)<input id="s-tel" name="tel" type="tel" autocomplete="tel"></label>
-                <label class="coche"><input id="s-rappel" type="checkbox" name="rappel"><span>Je demande à être rappelé·e au sujet de ce projet</span></label>
-                <p class="mention">Vos informations servent à répondre à votre demande (<a href="confidentialite/">confidentialité</a>). Toute sollicitation téléphonique à des fins commerciales suppose votre consentement préalable (art. L. 223-2 du code de la consommation).</p>
-                <button type="button" class="pilule pilule--porcelaine" id="s-envoyer">Envoyer mon estimation</button>
+                <label class="champ" for="s-tel">Votre téléphone<input id="s-tel" name="tel" type="tel" autocomplete="tel" inputmode="tel"></label>
+                <label class="champ" for="s-mail">Votre e-mail (facultatif)<input id="s-mail" name="email" type="email" autocomplete="email"></label>
+                <label class="coche"><input id="s-rappel" type="checkbox" name="rappel" checked><span>Je demande à être rappelé·e au sujet de ce projet</span></label>
+                <p class="mention">Vos informations servent à répondre à votre demande (<a href="confidentialite/">confidentialité</a>). Toute sollicitation téléphonique à des fins commerciales suppose votre consentement préalable (art. L. 223-2 du code de la consommation) : nous ne vous appelons que pour répondre à votre demande.</p>
+                <button type="button" class="pilule pilule--porcelaine" id="s-envoyer">Envoyer ma demande</button>
                 <p class="retour" id="s-retour" role="status"></p>
               </div>
             </div>
@@ -617,11 +615,7 @@
         <aside class="simu__live" id="simu-live" aria-live="polite" aria-label="Votre estimation en direct">
           <p class="live__kw"><span id="l-kw2">—</span><small> kW</small></p>
           <p class="live__conf" id="l-conf">Répondez aux questions, l'estimation se met à jour.</p>
-          <dl class="live__dl">
-            <dt>Statut</dt><dd id="l-statut">—</dd>
-            <dt>Suppléments</dt><dd id="l-sup">—</dd>
-            <dt>Prix</dt><dd id="l-prix"><span class="a-confirmer">[À CONFIRMER — CLIENT : grille tarifaire]</span></dd>
-          </dl>
+          <dl class="live__dl" hidden><dt>Statut</dt><dd id="l-statut">—</dd><dt>Suppléments</dt><dd id="l-sup">—</dd><dt>Prix</dt><dd id="l-prix">—</dd></dl>
         </aside>
       </div>
     </section>
@@ -691,19 +685,6 @@
         </div>
       </div>
       <div class="cadre zone__depot">
-        <article class="depot-carte" data-apparait>
-          <div class="depot-carte__vue" role="img" aria-label="Vue aérienne de Fréjus et Saint-Raphaël (IGN)"></div>
-          <div class="depot-carte__corps">
-            <p class="sur-titre sur-titre--clair">Notre dépôt</p>
-            <h3>Fréjus</h3>
-            <dl>
-              <dt>Adresse</dt><dd><span class="a-confirmer">[À CONFIRMER — CLIENT : adresse du dépôt]</span></dd>
-              <dt>Horaires</dt><dd><span class="a-confirmer">[À CONFIRMER — CLIENT : horaires d'ouverture]</span></dd>
-              <dt>Téléphone</dt><dd><a href="tel:+33634493249">06 34 49 32 49</a></dd>
-              <dt>E-mail</dt><dd><a href="mailto:contact@qualiclimsud.fr">contact@qualiclimsud.fr</a></dd>
-            </dl>
-          </div>
-        </article>
         <div class="depot-texte" data-apparait>
           <p>Nous posons sur toute la côte, de Fréjus à Cannes : Fréjus, Saint-Raphaël et Agay, Théoule-sur-Mer, Mandelieu-la-Napoule et Cannes.</p>
           <p>Votre commune n'y est pas&nbsp;? Appelez-nous&nbsp;: nous vous dirons si nous pouvons venir chez vous.</p>
@@ -835,7 +816,7 @@
             <p class="reponse">Elle ne doit pas. Le code de la santé publique interdit tout bruit qui, par sa durée, sa répétition ou son intensité, trouble la tranquillité du voisinage, y compris celui d'un appareil dont on a la garde. L'emplacement de l'unité extérieure se choisit donc aussi pour vos voisins.</p>
             <p class="source">Source : <a href="https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000035425967" rel="noopener">code de la santé publique, art. R. 1336-5</a>. Vérifié le 5 octobre 2026.</p></div></details>
           <details class="faq" id="q-zone"><summary><h3>Où intervenez-vous ?</h3><i aria-hidden="true"></i></summary><div class="faq__corps">
-            <p class="reponse">Notre dépôt est à Fréjus. Nous posons sur toute la côte, de Fréjus à Cannes : Fréjus, Saint-Raphaël et Agay, Théoule-sur-Mer, Mandelieu-la-Napoule et Cannes. Votre commune n'y est pas ? Appelez-nous au 06 34 49 32 49 : nous vous dirons si nous pouvons venir chez vous.</p>
+            <p class="reponse">Nous posons sur toute la côte, de Fréjus à Cannes : Fréjus, Saint-Raphaël et Agay, Théoule-sur-Mer, Mandelieu-la-Napoule et Cannes. Votre commune n'y est pas ? Appelez-nous au 06 34 49 32 49 : nous vous dirons si nous pouvons venir chez vous.</p>
             <p class="utile"><a href="#zone">Voir notre secteur</a></p></div></details>
         </div>
       </div>
@@ -851,7 +832,6 @@
           <a class="gros-numero" href="tel:+33634493249" data-magnetique><span class="gros-numero__lib">Appeler</span><span class="gros-numero__n">06 34 49 32 49</span></a>
           <a class="contact__mail" href="mailto:contact@qualiclimsud.fr">contact@qualiclimsud.fr</a>
           <dl class="contact__infos">
-            <div><dt>Dépôt</dt><dd>Fréjus · <span class="a-confirmer">[À CONFIRMER — CLIENT : adresse du dépôt]</span></dd></div>
             <div><dt>Secteur</dt><dd>De Fréjus à Cannes</dd></div>
             <div><dt>Horaires</dt><dd><span class="a-confirmer">[À CONFIRMER — CLIENT : horaires d'ouverture]</span></dd></div>
           </dl>
@@ -908,7 +888,7 @@
     </div>
     <div class="pied__colonnes">
       <div><p class="pied__t">Qualiclim Sud</p><p>Vente et pose de climatisation réversible, principalement Mitsubishi Electric et Mundoclima, de Fréjus à Cannes.</p><p class="pied__entreprise">QUALICLIM, SASU au capital de 100&nbsp;€ · SIREN 944&nbsp;335&nbsp;249 · Dirigeant : Michaël Musto</p></div>
-      <div><p class="pied__t">Contact</p><p><a href="tel:+33634493249">06 34 49 32 49</a></p><p><a href="mailto:contact@qualiclimsud.fr">contact@qualiclimsud.fr</a></p><p>Dépôt à Fréjus · <span class="a-confirmer">[À CONFIRMER — CLIENT : adresse du dépôt]</span></p></div>
+      <div><p class="pied__t">Contact</p><p><a href="tel:+33634493249">06 34 49 32 49</a></p><p><a href="mailto:contact@qualiclimsud.fr">contact@qualiclimsud.fr</a></p></div>
       <nav aria-label="Rubriques du site"><p class="pied__t">Rubriques</p><ul>
         <li><a href="#climatisation">La climatisation réversible</a></li>
         <li><a href="#simulateur">Simulateur de puissance</a></li>
@@ -951,8 +931,8 @@
 <script src="js/cote.js?v=fcbc39d7bc"></script>
 <script src="js/piece3d.js?v=c8fc9dc1b3"></script>
 <script src="js/moteur.js?v=703896cb5f"></script>
-<script src="js/simulateur.js?v=5890142df9"></script>
-<script src="js/site.js?v=6871b53690"></script>
+<script src="js/simulateur.js?v=7d6b844795"></script>
+<script src="js/site.js?v=667d523e52"></script>
 <script src="js/commun.js?v=21182861cf"></script>
 </body>
 </html>

@@ -278,7 +278,7 @@
     const hote = $('#zone-scene'), C = window.QualiclimCote, items = $$('.zone__communes li');
     if (!hote) return;
     const LIEUX = [
-      { nom: 'Fréjus · notre dépôt', lon: 6.736, lat: 43.433, depot: true, de: 0, a: .32 },
+      { nom: 'Fréjus', lon: 6.736, lat: 43.433, de: 0, a: .32 },
       { nom: 'Saint-Raphaël', lon: 6.769, lat: 43.425, de: .04, a: .42 },
       { nom: 'Agay', lon: 6.857, lat: 43.433, de: .24, a: .62 },
       { nom: 'Théoule-sur-Mer', lon: 6.940, lat: 43.508, de: .48, a: .86 },
