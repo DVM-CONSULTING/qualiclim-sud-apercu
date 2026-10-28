@@ -57,7 +57,7 @@ const kit = MESURE ? kitBrut.replace('{{MESURE_ID}}', C.mesureId).trim() : '';
 const RUBRIQUES = [['climatisation', 'Réversible'], ['simulateur', 'Simulateur'], ['zone', 'Secteur'], ['questions', 'Questions'], ['contact', 'Contact']];
 const PAGES = [
   { dossier: 'mentions-legales', court: 'Mentions légales', h1: 'Mentions légales', titre: 'Mentions légales | Qualiclim Sud',
-    description: 'Mentions légales du site Qualiclim Sud : éditeur QUALICLIM (SASU), immatriculation, hébergeur, assurances, médiateur de la consommation et crédits.',
+    description: 'Mentions légales du site Qualiclim Sud : éditeur QUALICLIM (entrepreneur individuel), immatriculation, hébergeur, assurances, médiateur de la consommation et crédits.',
     chapeau: 'Qui édite ce site, qui l\'héberge, et à qui vous adresser.' },
   { dossier: 'confidentialite', court: 'Confidentialité et cookies', h1: 'Confidentialité et cookies', titre: 'Confidentialité et cookies | Qualiclim Sud',
     description: 'Ce que Qualiclim Sud fait des informations envoyées par le formulaire et le simulateur, combien de temps elles sont gardées, vos droits et les cookies.',
@@ -92,11 +92,10 @@ function grapheAccueil() {
     { '@type': 'HVACBusiness', '@id': `${D}/#entreprise`, name: 'Qualiclim Sud', legalName: 'QUALICLIM', url: `${D}/`, logo: `${D}/img/logo.webp`, image: `${D}/img/partage.jpg`,
       description: 'Vente, pose et entretien de climatisation réversible (pompe à chaleur air-air), de Fréjus à Cannes.',
       telephone: '+33634493249', email: 'contact@qualiclimsud.fr',
-      address: { '@type': 'PostalAddress', addressLocality: 'Fréjus', postalCode: '83600', addressRegion: 'Provence-Alpes-Côte d\'Azur', addressCountry: 'FR' },
       areaServed: ['Fréjus', 'Saint-Raphaël', 'Théoule-sur-Mer', 'Mandelieu-la-Napoule', 'Cannes'].map(name => ({ '@type': 'City', name })),
       brand: ['Mitsubishi Electric', 'Daikin', 'Gree', 'Midea', 'Movair', 'Mundoclima', 'Toshiba', 'Panasonic', 'Atlantic', 'Hisense'].map(name => ({ '@type': 'Brand', name })),
       knowsAbout: ['Climatisation réversible', 'Pompe à chaleur air-air', 'Entretien de climatisation'],
-      identifier: { '@type': 'PropertyValue', propertyID: 'SIREN', value: '944335249' } },
+      identifier: { '@type': 'PropertyValue', propertyID: 'SIREN', value: '797445715' } },
     { '@type': 'WebSite', '@id': `${D}/#site`, url: `${D}/`, name: 'Qualiclim Sud', inLanguage: 'fr-FR', publisher: { '@id': `${D}/#entreprise` } },
     { '@type': 'WebPage', '@id': `${D}/#page`, url: `${D}/`, name: 'Climatisation réversible de Fréjus à Cannes | Qualiclim Sud', isPartOf: { '@id': `${D}/#site` }, about: { '@id': `${D}/#entreprise` }, inLanguage: 'fr-FR' },
   ] };
@@ -135,7 +134,7 @@ function pied(r) {
       <p class="pied__slogan">Le Sud, à la bonne température.</p>
     </div>
     <div class="pied__colonnes">
-      <div><p class="pied__t">Qualiclim Sud</p><p>Vente, pose et entretien de climatisation réversible, de Fréjus à Cannes.</p><p class="pied__entreprise">QUALICLIM, SASU au capital de 100&nbsp;€ · SIREN 944&nbsp;335&nbsp;249 · Dirigeant : Michaël Musto</p></div>
+      <div><p class="pied__t">Qualiclim Sud</p><p>Vente, pose et entretien de climatisation réversible, de Fréjus à Cannes.</p><p class="pied__entreprise">QUALICLIM, entrepreneur individuel · SIRET 797&nbsp;445&nbsp;715&nbsp;00015 · TVA non applicable, art.&nbsp;293&nbsp;B du CGI</p></div>
       <div><p class="pied__t">Contact</p><p><a href="tel:+33634493249">06 34 49 32 49</a></p><p><a href="mailto:contact@qualiclimsud.fr">contact@qualiclimsud.fr</a></p></div>
       <nav aria-label="Rubriques du site"><p class="pied__t">Rubriques</p><ul>
         <li><a href="${r}#climatisation">La climatisation réversible</a></li>
