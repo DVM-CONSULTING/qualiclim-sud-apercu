@@ -83,7 +83,7 @@
       camY: 0.15 - 0.30 * bascule,                       // +0,15 → −0,15
       consigne: 26 - Math.round(7 * plage(p, 0.36, 0.58)), // 26 → 19, par pas entiers, jamais minuté
       saisonActive: p >= 0.47 ? 'hiver' : 'ete',
-      phrases: [-105 * t1, 105 * (1 - t1) - 105 * t2, 105 * (1 - t2)], // yPercent de chaque phrase
+      phrases: [-130 * t1, 130 * (1 - t1) - 130 * t2, 130 * (1 - t2)], // yPercent de chaque phrase (130 : le sommet des lettres de la suivante ne dépasse jamais du masque)
       phraseActive: p < 0.46 ? 0 : p < 0.87 ? 1 : 2,
       opaciteConsigne: 1 - 0.75 * unite,                 // la phrase porte le message à la fin
       jauge: bascule

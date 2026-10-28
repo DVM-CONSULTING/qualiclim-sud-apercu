@@ -90,12 +90,12 @@ function tete({ r, chemin, index = false, page = null, introuvable = false }) {
 function grapheAccueil() {
   return { '@context': 'https://schema.org', '@graph': [
     { '@type': 'HVACBusiness', '@id': `${D}/#entreprise`, name: 'Qualiclim Sud', legalName: 'QUALICLIM', url: `${D}/`, logo: `${D}/img/logo.webp`, image: `${D}/img/partage.jpg`,
-      description: 'Vente et pose de climatisation réversible (pompe à chaleur air-air), principalement Mitsubishi Electric et Mundoclima, de Fréjus à Cannes.',
+      description: 'Vente, pose et entretien de climatisation réversible (pompe à chaleur air-air), de Fréjus à Cannes.',
       telephone: '+33634493249', email: 'contact@qualiclimsud.fr',
       address: { '@type': 'PostalAddress', addressLocality: 'Fréjus', postalCode: '83600', addressRegion: 'Provence-Alpes-Côte d\'Azur', addressCountry: 'FR' },
       areaServed: ['Fréjus', 'Saint-Raphaël', 'Théoule-sur-Mer', 'Mandelieu-la-Napoule', 'Cannes'].map(name => ({ '@type': 'City', name })),
-      brand: ['Mitsubishi Electric', 'Mundoclima'].map(name => ({ '@type': 'Brand', name })),
-      knowsAbout: ['Climatisation réversible', 'Pompe à chaleur air-air'],
+      brand: ['Mitsubishi Electric', 'Daikin', 'Gree', 'Midea', 'Movair', 'Mundoclima', 'Toshiba', 'Panasonic', 'Atlantic', 'Hisense'].map(name => ({ '@type': 'Brand', name })),
+      knowsAbout: ['Climatisation réversible', 'Pompe à chaleur air-air', 'Entretien de climatisation'],
       identifier: { '@type': 'PropertyValue', propertyID: 'SIREN', value: '944335249' } },
     { '@type': 'WebSite', '@id': `${D}/#site`, url: `${D}/`, name: 'Qualiclim Sud', inLanguage: 'fr-FR', publisher: { '@id': `${D}/#entreprise` } },
     { '@type': 'WebPage', '@id': `${D}/#page`, url: `${D}/`, name: 'Climatisation réversible de Fréjus à Cannes | Qualiclim Sud', isPartOf: { '@id': `${D}/#site` }, about: { '@id': `${D}/#entreprise` }, inLanguage: 'fr-FR' },
@@ -135,7 +135,7 @@ function pied(r) {
       <p class="pied__slogan">Le Sud, à la bonne température.</p>
     </div>
     <div class="pied__colonnes">
-      <div><p class="pied__t">Qualiclim Sud</p><p>Vente et pose de climatisation réversible, principalement Mitsubishi Electric et Mundoclima, de Fréjus à Cannes.</p><p class="pied__entreprise">QUALICLIM, SASU au capital de 100&nbsp;€ · SIREN 944&nbsp;335&nbsp;249 · Dirigeant : Michaël Musto</p></div>
+      <div><p class="pied__t">Qualiclim Sud</p><p>Vente, pose et entretien de climatisation réversible, de Fréjus à Cannes.</p><p class="pied__entreprise">QUALICLIM, SASU au capital de 100&nbsp;€ · SIREN 944&nbsp;335&nbsp;249 · Dirigeant : Michaël Musto</p></div>
       <div><p class="pied__t">Contact</p><p><a href="tel:+33634493249">06 34 49 32 49</a></p><p><a href="mailto:contact@qualiclimsud.fr">contact@qualiclimsud.fr</a></p></div>
       <nav aria-label="Rubriques du site"><p class="pied__t">Rubriques</p><ul>
         <li><a href="${r}#climatisation">La climatisation réversible</a></li>
