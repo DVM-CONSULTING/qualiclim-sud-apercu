@@ -65,14 +65,6 @@
         </div>
         <div class="q"><p class="q__t"><label for="surf-${i}">Surface</label></p>
           <div class="curseur"><input id="surf-${i}" data-champ="surfaceM2" type="range" min="5" max="80" step="1" value="${p.surfaceM2}"><output class="chiffre" for="surf-${i}">${p.surfaceM2}<span class="u">m²</span></output></div></div>
-        <div class="q"><p class="q__t" id="expo-${i}">Les fenêtres principales donnent au</p>
-          <div class="choix" role="radiogroup" aria-labelledby="expo-${i}">${EXPOS.map(([v, l]) => `<label><input type="radio" name="expo-${i}" data-champ="exposition" value="${v}"${v === p.exposition ? ' checked' : ''}><span>${l}</span></label>`).join('')}</div></div>
-        <div class="q"><p class="q__t" id="haut-${i}">Hauteur sous plafond</p>
-          <div class="choix" role="radiogroup" aria-labelledby="haut-${i}">${HAUTEURS.map(([v, l]) => `<label><input type="radio" name="haut-${i}" data-champ="hauteurSousPlafondM" value="${v}"${v === p.hauteurSousPlafondM ? ' checked' : ''}><span>${l}</span></label>`).join('')}</div></div>
-        <div class="piece__ligne">
-          <label class="coche"><input type="checkbox" data-champ="grandesBaiesVitrees"${p.grandesBaiesVitrees ? ' checked' : ''}><span>Grandes baies vitrées</span></label>
-          ${pieces.length > 1 ? `<button type="button" class="lien" data-retirer>Retirer cette pièce</button>` : ''}
-        </div>
       </div>`).join('');
     $('ajout-piece').hidden = pieces.length >= PIECES_MAX;
     rendreOnglets();
@@ -167,35 +159,13 @@
   }
 
   function rendreResultat(r) {
-    const dim = r.dimensionnement, maxKw = Math.max(1, ...dim.pieces.map(p => p.puissanceCalculeeKw));
-    const piecesHtml = dim.pieces.map(p => `
-      <div class="res__ligne"><span><strong>${esc(p.nom)}</strong> · ${nb(p.surfaceM2, 0)} m²</span><span class="val">${chiffre(nb(p.puissanceCalculeeKw), 'kW')}</span>
-        <span class="res__barre"><i style="--l:${(p.puissanceCalculeeKw / maxKw * 100).toFixed(0)}%"></i></span>
-        <span class="facteurs">${p.facteurs.length ? p.facteurs.map(x => `${x.effet > 0 ? '+' : '−'}${nb(Math.abs(x.effet) * 100, 0)} % ${esc(x.libelle.toLowerCase())}`).join(' · ') : 'Aucune majoration'}${p.tailleConseilleeKw ? ` · appareil courant : ${nb(p.tailleConseilleeKw)} kW` : ''}</span></div>`).join('');
-    const supHtml = r.supplements.length ? r.supplements.map(s => {
-      const p = grille ? M.GRILLE_FICTIVE.supplements[s.code] : undefined;
-      return `<div class="res__ligne"><span><strong>${esc(s.libelle)}</strong></span><span class="val">${s.surDevis ? 'après visite' : p !== undefined ? chiffre(Number(p).toLocaleString('fr-FR'), '€') : '<span class="a-confirmer">[À CONFIRMER — CLIENT : prix]</span>'}</span><span class="facteurs">${esc(s.motif)}</span></div>`;
-    }).join('') : '<p class="res__note">Aucun : votre projet correspond à une pose standard.</p>';
-    const alertes = [...r.blocages, ...r.alertes].map(a => `<li>${esc(a.message)}</li>`).join('');
-    const visite = r.motifsVisite.map(m => `<li>${esc(m)}</li>`).join('');
-    const manque = r.champsManquants.map(c => MANQUE[c] || 'la surface d\'une pièce');
-    const zone = r.zone.dansSecteur === true ? `${esc(r.zone.commune)} : dans notre secteur, de Fréjus à Cannes.`
-      : r.zone.dansSecteur === false ? 'Hors de notre secteur habituel, de Fréjus à Cannes : appelez-nous au 06 34 49 32 49, nous vous dirons si nous pouvons venir.' : '';
-    const prix = '<p class="res__note"><span class="a-confirmer">[À CONFIRMER — CLIENT : prix par gamme, suppléments et offres à afficher dans le simulateur]</span></p><p class="res__note">En attendant, le prix se donne sur devis, après vérification chez vous.</p>';
+    const dim = r.dimensionnement;
     $('simu-resultat').innerHTML = `
-      <div class="bascule"><h3>Votre estimation</h3><span class="etat">${STATUTS[r.statut]}</span></div>
-      ${manque.length ? `<p class="res__note">Il manque : ${esc(manque.join(', '))}. <button type="button" class="lien" data-aller-a="${r.champsManquants[0]?.startsWith('installation') ? 2 : r.champsManquants[0]?.startsWith('pieces') ? 1 : 0}">Compléter</button></p>` : ''}
-      <div class="res__bloc"><h4>Puissance conseillée : ${nb(dim.puissanceTotaleKw)} kW</h4><p class="res__note">${dim.configuration === 'multisplit' ? CONFIG.multisplit(dim.pieces.length) : CONFIG[dim.configuration]}.</p>${piecesHtml}</div>
-      ${visite ? `<div class="res__bloc"><h4>Ce qu'un technicien doit voir sur place</h4><ul class="res__liste">${visite}</ul></div>` : ''}
-      <div class="res__bloc"><h4>Ce que la pose demande en plus</h4>${supHtml}</div>
-      ${alertes ? `<div class="res__bloc"><h4>À vérifier</h4><ul class="res__liste">${alertes}</ul></div>` : ''}
-      <div class="res__bloc"><h4>Prix</h4><p class="res__note">Marques posées : principalement Mitsubishi Electric et Mundoclima.</p>${prix}</div>
-      <div class="res__bloc"><h4>TVA, aides et secteur</h4><p class="res__note">${esc(r.tva.texte)}</p>
-        <p class="res__note">Prime CEE : <span class="a-confirmer">[À CONFIRMER — CLIENT : accompagnement aux primes]</span></p>${zone ? `<p class="res__note">${zone}</p>` : ''}</div>
+      <div class="bascule"><h3>Votre estimation</h3></div>
+      <div class="res__bloc"><h4>Puissance conseillée : ${nb(dim.puissanceTotaleKw)} kW</h4><p class="res__note">${nb(dim.surfaceTotaleM2, 0)} m² · ${BESOIN[val('besoin')] || ''}. C'est un ordre de grandeur : un technicien vérifie chez vous avant tout devis.</p></div>
       <div class="res__mentions">${r.mentionsEstimation.map(m => `<p>${esc(m)}</p>`).join('')}</div>`;
     if (G && !reduit) {
       G.from('#simu-resultat .res__bloc, #simu-resultat > .bascule', { y: 24, opacity: 0, duration: .7, ease: 'power3.out', stagger: .07 });
-      G.from('#simu-resultat .res__barre i', { scaleX: 0, duration: 1, ease: 'power3.out', stagger: .08, delay: .2 });
     }
   }
   $('simu-resultat').addEventListener('click', e => {
@@ -211,10 +181,10 @@
     const montrer = () => {
       etapes.forEach(el => { el.hidden = Number(el.dataset.etape) !== etape; });
       ongletsEtapes.forEach(b => { if (Number(b.dataset.aller) === etape) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current'); });
-      $('simu-barre').style.width = `${(etape + 1) * 25}%`;
+      $('simu-barre').style.width = etape === 3 ? '100%' : '50%';
       $('s-prec').disabled = etape === 0;
       $('s-suiv').hidden = etape === 3;
-      $('s-suiv').textContent = etape === 2 ? 'Voir mon estimation' : 'Suivant';
+      $('s-suiv').textContent = 'Continuer';
       if (piece) piece.vue(etape === 2 ? 'installation' : 'piece');
       maj();
       if (G && !reduit && defiler) G.fromTo(entrante, { x: etape > avant ? 40 : -40, opacity: 0 }, { x: 0, opacity: 1, duration: .55, ease: 'power3.out', clearProps: 'transform,opacity' });
@@ -229,8 +199,8 @@
     else montrer();
   }
   ongletsEtapes.forEach(b => b.addEventListener('click', () => aller(Number(b.dataset.aller))));
-  $('s-prec').addEventListener('click', () => aller(etape - 1));
-  $('s-suiv').addEventListener('click', () => aller(etape + 1));
+  $('s-prec').addEventListener('click', () => aller(etape === 3 ? 0 : etape - 1));
+  $('s-suiv').addEventListener('click', () => aller(etape === 0 ? 3 : etape + 1));
   f.addEventListener('input', e => { if (!e.target.closest('#simu-pieces')) maj(); });
   f.addEventListener('submit', e => e.preventDefault());
   $('s-cp').addEventListener('input', e => { e.target.value = e.target.value.replace(/\D/g, '').slice(0, 5); });
@@ -239,24 +209,22 @@
     if (envoiEnCours) return;
     const nom = $('s-nom').value.trim(), mail = $('s-mail').value.trim(), tel = $('s-tel').value.trim(), out = $('s-retour');
     if (nom.length < 2) { out.textContent = 'Indiquez votre nom.'; $('s-nom').focus(); return; }
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(mail)) { out.textContent = 'Indiquez une adresse e-mail valide pour que nous puissions vous répondre.'; $('s-mail').focus(); return; }
-    if (tel && !/^[+0-9 ().-]{9,}$/.test(tel)) { out.textContent = 'Ce numéro de téléphone semble incomplet.'; $('s-tel').focus(); return; }
+    if (!/^[+0-9 ().-]{9,}$/.test(tel)) { out.textContent = 'Indiquez un numéro de téléphone pour que nous puissions vous rappeler.'; $('s-tel').focus(); return; }
+    if (mail && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(mail)) { out.textContent = 'Cette adresse e-mail semble incomplète (elle est facultative).'; $('s-mail').focus(); return; }
+    if (!coche('rappel') && !mail) { out.textContent = 'Cochez « Je demande à être rappelé·e » ou indiquez votre e-mail, pour que nous puissions vous répondre.'; return; }
     const r = dernierCalcul || maj(), dim = r.dimensionnement;
-    const lignes = ['Estimation envoyée depuis le simulateur du site.', `Logement : ${val('type') === 'appartement' ? 'appartement' : 'maison'} · code postal ${$('s-cp').value || 'non indiqué'}`,
-      `Puissance conseillée : ${nb(dim.puissanceTotaleKw)} kW · ${dim.configuration === 'multisplit' ? CONFIG.multisplit(dim.pieces.length) : CONFIG[dim.configuration]}`,
-      ...dim.pieces.map(p => `- ${p.nom} : ${nb(p.surfaceM2, 0)} m², ${nb(p.puissanceCalculeeKw)} kW`),
-      `Unité extérieure : ${val('emplacementUe') || 'non précisé'} · distance ${$('s-dist').value} m`,
-      r.supplements.length ? `Suppléments détectés : ${r.supplements.map(x => x.libelle).join(', ')}` : 'Pose standard.',
+    const lignes = ['Demande envoyée depuis le simulateur du site.', `Logement : ${val('type') === 'appartement' ? 'appartement' : 'maison'}`,
+      `Besoin : ${BESOIN[val('besoin')] || 'non précisé'}`,
+      ...dim.pieces.map(p => `- ${p.nom} : ${nb(p.surfaceM2, 0)} m², puissance conseillée ${nb(p.puissanceCalculeeKw)} kW`),
       coche('rappel') ? 'Souhaite être rappelé·e.' : 'Ne demande pas de rappel.'];
     envoiEnCours = true; out.textContent = 'Envoi…';
     const res = window.QualiclimEnvoi ? await window.QualiclimEnvoi.envoyer({ nom, email: mail, telephone: tel, message: lignes.join('\n'), rappel: coche('rappel'), details: [
-      ['Logement', `${val('type') === 'appartement' ? 'Appartement' : 'Maison'} · code postal ${$('s-cp').value || 'non indiqué'}`],
-      ['Puissance conseillée', `${nb(dim.puissanceTotaleKw)} kW · ${dim.configuration === 'multisplit' ? CONFIG.multisplit(dim.pieces.length) : CONFIG[dim.configuration]}`],
-      ['Pièces', dim.pieces.map(p => `${p.nom} ${nb(p.surfaceM2, 0)} m² (${nb(p.puissanceCalculeeKw)} kW)`).join(' · ')],
-      ['Unité extérieure', `${val('emplacementUe') || 'non précisé'} · distance ${$('s-dist').value} m`],
-      ['Suppléments', r.supplements.length ? r.supplements.map(x => x.libelle).join(', ') : 'pose standard']] }, 'simulateur') : { ok: false, nonRelie: true };
+      ['Logement', val('type') === 'appartement' ? 'Appartement' : 'Maison'],
+      ['Besoin', BESOIN[val('besoin')] || 'non précisé'],
+      ['Puissance conseillée', `${nb(dim.puissanceTotaleKw)} kW`],
+      ['Pièces', dim.pieces.map(p => `${p.nom} ${nb(p.surfaceM2, 0)} m² (${nb(p.puissanceCalculeeKw)} kW)`).join(' · ')]] }, 'simulateur') : { ok: false, nonRelie: true };
     envoiEnCours = false;
-    out.textContent = res.ok ? 'Merci, votre estimation nous est parvenue. Nous vous répondons par e-mail' + (coche('rappel') ? ', et nous vous rappelons comme vous l\'avez demandé.' : '.')
+    out.textContent = res.ok ? 'Merci, votre demande nous est parvenue.' + (coche('rappel') ? ' Nous vous rappelons comme vous l\'avez demandé.' : ' Nous vous répondons par e-mail.')
       : res.nonRelie ? "Aperçu du site : l'envoi sera relié à la mise en ligne, rien n'a été envoyé. En attendant, appelez-nous au 06 34 49 32 49."
       : (res.erreurs && res.erreurs.length ? res.erreurs.join(' ') + ' ' : "L'envoi n'a pas abouti. ") + 'Vous pouvez aussi nous appeler au 06 34 49 32 49.';
   });

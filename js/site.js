@@ -266,10 +266,14 @@
     if (!sec || !hote || !R) return;
     sec.style.setProperty('--rev-affiche', 'url("../img/reversible-affiche.webp")');
     let scene3d = null, texte = null, monte = false;
-    const monter = () => { if (monte) return; monte = true; try { scene3d = R.monter(hote); texte = R.texte(sec); } catch (e) { scene3d = null; } };
+    // Le texte (mise en page « vivante ») se pose tout de suite : l'épinglage est mesuré sur la forme finale, pas sur la forme statique,
+    // plus haute. La scène WebGL, elle, ne se monte qu'à l'approche.
+    const poserTexte = () => { if (texte) return; try { texte = R.texte(sec); } catch (e) { texte = null; } };
+    const monter = () => { if (monte) return; monte = true; poserTexte(); try { scene3d = R.monter(hote); } catch (e) { scene3d = null; } };
     if (reduit || !(G && ST)) { monter(); return; }
+    poserTexte();
     ST.create({ trigger: sec, start: 'top bottom+=50%', once: true, onEnter: monter });
-    ST.create({ trigger: hote, start: 'top top', end: '+=220%', pin: true, scrub: true, anticipatePin: 1,
+    ST.create({ trigger: hote, start: 'top top', end: '+=150%', pin: true, scrub: true, anticipatePin: 1,
       onUpdate: s => { monter(); if (scene3d) scene3d.regler(s.progress); if (texte) texte.regler(s.progress); } });
   }
 
@@ -278,7 +282,7 @@
     const hote = $('#zone-scene'), C = window.QualiclimCote, items = $$('.zone__communes li');
     if (!hote) return;
     const LIEUX = [
-      { nom: 'Fréjus · notre dépôt', lon: 6.736, lat: 43.433, depot: true, de: 0, a: .32 },
+      { nom: 'Fréjus', lon: 6.736, lat: 43.433, de: 0, a: .32 },
       { nom: 'Saint-Raphaël', lon: 6.769, lat: 43.425, de: .04, a: .42 },
       { nom: 'Agay', lon: 6.857, lat: 43.433, de: .24, a: .62 },
       { nom: 'Théoule-sur-Mer', lon: 6.940, lat: 43.508, de: .48, a: .86 },
