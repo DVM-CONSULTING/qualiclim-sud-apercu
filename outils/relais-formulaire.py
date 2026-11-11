@@ -15,6 +15,9 @@ Règles tenues (comme le Worker) :
   - champ piège rempli ou envoi en moins de 3 s : on répond « merci » sans rien envoyer (on ne renseigne
     jamais un robot) ; 5 demandes au plus par appareil et par 10 minutes ;
   - le message d'un visiteur n'est jamais interprété : texte brut, HTML échappé ;
+  - filtre anti-spam à points (voir evaluer) : une demande douteuse reçoit la même réponse « merci » (un robot
+    ne doit rien apprendre) mais n'est PAS envoyée à l'entreprise : elle est mise de côté dans « suspects »,
+    résumée une fois par jour par e-mail, et peut être débloquée (--suspects, --liberer <id>) ;
   - deux e-mails : l'alerte à l'entreprise (bouton d'appel, détails, message), puis, si le visiteur a laissé son
     e-mail, un accusé de réception qui ne recopie jamais son texte (pas de relais de spam vers un tiers).
 
@@ -24,6 +27,7 @@ Configuration par variables d'environnement (fichier /etc/qualiclim-relais.env, 
   ACCUSE (0 pour ne pas envoyer d'accusé de réception au visiteur). Aucune dépendance : bibliothèque standard de Python 3.
 """
 import html
+import hashlib
 import json
 import os
 import re
@@ -32,6 +36,7 @@ import threading
 import time
 import urllib.error
 import urllib.parse
+import unicodedata
 import urllib.request
 import uuid
 from datetime import datetime, timezone
@@ -49,18 +54,23 @@ SLUG = os.environ.get('SLUG', 'qualiclim-sud').strip()
 ENTREPRISE = os.environ.get('ENTREPRISE', 'Qualiclim Sud').strip()
 SITE_URL = os.environ.get('SITE_URL', 'https://qualiclimsud.fr').strip().rstrip('/')
 TEL_ENTREPRISE = os.environ.get('TEL_ENTREPRISE', '06 34 49 32 49').strip()
-MENTION_SOCIETE = os.environ.get('MENTION_SOCIETE', 'QUALICLIM, SASU au capital de 100\u00a0€ · SIREN\u00a0944\u00a0335\u00a0249').strip()
+MENTION_SOCIETE = os.environ.get('MENTION_SOCIETE', 'QUALICLIM, entrepreneur individuel · SIRET\u00a0797\u00a0445\u00a0715\u00a000015 · TVA non applicable, art.\u00a0293\u00a0B du CGI').strip()
 ACCUSE = os.environ.get('ACCUSE', '1').strip() != '0'  # accusé de réception au visiteur qui a laissé son e-mail
 ORIGINES = set(os.environ.get('ORIGINES', 'https://qualiclimsud.fr https://www.qualiclimsud.fr').split())
 PORT = int(os.environ.get('PORT', '8787'))
 DOSSIER = Path(os.environ.get('STATE_DIRECTORY', '/var/lib/qualiclim-relais'))
-FILE, ENVOYEES = DOSSIER / 'a-envoyer', DOSSIER / 'envoyees'
+FILE, ENVOYEES, SUSPECTS = DOSSIER / 'a-envoyer', DOSSIER / 'envoyees', DOSSIER / 'suspects'
 TAILLE_MAX = 64 * 1024
-DELAI_MINIMAL_S, LIMITE, FENETRE_S = 3, 5, 600
+DELAI_MINIMAL_S, LIMITE, FENETRE_S = 4, 3, 600   # 4 s avant l'envoi, 3 envois par appareil et par 10 minutes
+PLAFOND_HEURE = 20        # demandes normales par heure, tous appareils confondus : au-delà, mises de côté
+SEUIL_SUSPECT = 3         # points à partir desquels une demande est mise de côté
+CONSERVATION_SUSPECTS_JOURS = 30
 CONSERVATION_JOURS = 90  # copie de sécurité ; la demande vit ensuite dans la messagerie du client
 PARIS = ZoneInfo('Europe/Paris')
 
 _compteurs: dict = {}
+_recentes: list = []      # heures des demandes normales (plafond horaire)
+_messages: dict = {}      # empreinte du message -> (heure, identité de l'expéditeur)
 _verrou = threading.Lock()
 
 
@@ -116,6 +126,77 @@ def complements(champs: dict) -> dict:
                              if isinstance(p, list) and len(p) == 2 and nettoyer(p[0]) and nettoyer(p[1])]
         sortie['note'] = nettoyer(champs.get('note'))[:2000]
     return sortie
+
+
+# ---------------------------------------------------------------- filtre anti-spam à points
+# Un robot remplit tout et se moque d'un « merci » : on ne lui dit jamais qu'il est repéré. Chaque signal ajoute des
+# points ; à SEUIL_SUSPECT la demande est mise de côté, pas supprimée (un vrai client mal classé se rattrape).
+TLD_RISQUES = ('.ru', '.cn', '.my.id', '.co.id', '.web.id', '.biz.id', '.xyz', '.top', '.click', '.buzz', '.icu', '.cfd',
+               '.sbs', '.monster', '.rest', '.ws', '.su', '.work', '.loan', '.win')
+JETABLES = {'mailinator.com', 'yopmail.com', 'yopmail.fr', 'guerrillamail.com', '10minutemail.com', 'tempmail.com',
+            'temp-mail.org', 'trashmail.com', 'sharklasers.com', 'getnada.com', 'dispostable.com', 'maildrop.cc',
+            'throwaway.email', 'fakeinbox.com', 'mohmal.com', 'tempail.com'}
+LIEN = re.compile(r'(https?://|www\.|\b[a-z0-9-]{2,}\.(?:com|net|org|ru|cn|xyz|top|biz|info|shop|site|online|click|link|club)\b)', re.I)
+PUB = re.compile(r"\b(seo|backlinks?|bitcoin|crypto\w*|casino|viagra|cialis|forex|escort\w*|porn\w*|"
+                 r"gagner de l.argent|premi[eè]re page (?:de )?google|augmenter (?:votre |le )?trafic|"
+                 r"agence (?:web|seo|marketing)|refonte (?:de )?(?:votre )?site|cr[eé]ation de site|"
+                 r"offre (?:sp[eé]ciale )?commerciale|collaboration|partenariat commercial)\b", re.I)
+
+
+def part_non_latine(texte: str) -> float:
+    lettres = [c for c in texte if c.isalpha()]
+    if not lettres:
+        return 0.0
+    return sum(1 for c in lettres if 'LATIN' not in unicodedata.name(c, 'LATIN')) / len(lettres)
+
+
+def evaluer(d: dict, maintenant: float) -> tuple:
+    """Renvoie (points, raisons). Les raisons sont écrites pour l'entreprise : elles servent au résumé quotidien."""
+    pts, raisons = 0, []
+    def signal(n: int, texte: str) -> None:
+        nonlocal pts
+        pts += n
+        raisons.append(texte)
+    nom, msg, mail = d['nom'], d['message'], d['email'] or ''
+    domaine = mail.rsplit('@', 1)[-1].lower() if '@' in mail else ''
+    if domaine in JETABLES:
+        signal(3, 'adresse e-mail jetable (' + domaine + ')')
+    elif domaine.endswith(TLD_RISQUES):
+        signal(3, 'adresse e-mail d\'un pays ou d\'un domaine très utilisé par les robots (' + domaine + ')')
+    if LIEN.search(re.sub(r'\S+@\S+', ' ', msg)) or LIEN.search(nom):   # une adresse e-mail écrite dans le message n'est pas un lien
+        signal(3, 'lien internet dans le message ou dans le nom')
+    if part_non_latine(msg) > 0.3 or part_non_latine(nom) > 0.3:
+        signal(3, 'écriture non latine')
+    if PUB.search(msg):
+        signal(3, 'mots de démarchage ou de publicité')
+    if re.search(r'\d', nom):
+        signal(1, 'chiffres dans le nom')
+    if re.search(r'(?i)[bcdfghjklmnpqrstvwxz]{5,}', nom):
+        signal(1, 'nom sans voyelles')
+    if len(msg) < 12:
+        signal(1, 'message très court')
+    if re.search(r'(.)\1{5,}', msg):
+        signal(1, 'caractères répétés')
+    lettres = [c for c in msg if c.isalpha()]
+    if len(lettres) > 20 and sum(1 for c in lettres if c.isupper()) / len(lettres) > 0.6:
+        signal(1, 'message écrit en majuscules')
+    # même texte, expéditeur différent : un robot qui rejoue son message
+    if len(msg) >= 25:
+        empreinte = hashlib.sha1(re.sub(r'[^a-z0-9]', '', msg.lower()).encode()).hexdigest()
+        identite = (nom.lower(), d['telephone'] or '', mail)
+        with _verrou:
+            for k in [k for k, v in _messages.items() if maintenant - v[0] > 86400]:
+                del _messages[k]
+            avant = _messages.get(empreinte)
+            if avant and avant[1] != identite:
+                signal(3, 'même message déjà reçu d\'une autre personne')
+            _messages.setdefault(empreinte, (maintenant, identite))
+    # trop de demandes normales en peu de temps, tous appareils confondus
+    with _verrou:
+        du_moment = [t for t in _recentes if maintenant - t < 3600]
+        if len(du_moment) >= PLAFOND_HEURE:
+            signal(3, 'trop de demandes en une heure')
+    return pts, raisons
 
 
 # ---------------------------------------------------------------- e-mails (HTML en tableaux : Gmail, Outlook, Apple Mail, téléphones)
@@ -344,6 +425,62 @@ def traiter_fichier(f: Path) -> bool:
     return ok
 
 
+def lister_suspects() -> list:
+    sortie = []
+    for f in sorted(SUSPECTS.glob('*.json')) if SUSPECTS.exists() else []:
+        try:
+            sortie.append((f, json.loads(f.read_text(encoding='utf-8'))))
+        except Exception:
+            continue
+    return sortie
+
+
+def resume_suspects() -> bool:
+    """Un seul e-mail par jour, sobre : de quoi retrouver un vrai client mal classé, sans bouton ni lien."""
+    a_dire = [(f, d) for f, d in lister_suspects() if not d.get('resume_envoye')]
+    marque = DOSSIER / 'dernier-resume'
+    if not a_dire or (marque.exists() and time.time() - marque.stat().st_mtime < 86400):
+        return True
+    lignes = []
+    for _, d in a_dire:
+        lignes.append(f"- {date_longue(d['recu_le'])} · {d['nom']} · {d['telephone'] or 'sans téléphone'} · {d['email'] or 'sans e-mail'}"
+                      f"\n  Pourquoi : {' ; '.join(d['raisons'])}\n  Message : {d['message'][:220]}{'…' if len(d['message']) > 220 else ''}\n  Numéro : {d['id']}")
+    texte = (f"{len(a_dire)} demande(s) envoyée(s) depuis le site ont été mises de côté, car elles ressemblent à du courrier indésirable. "
+             "Aucune n'a été transmise.\n\n" + '\n\n'.join(lignes) +
+             "\n\nSi l'une est une vraie demande, demandez à votre prestataire de la libérer (numéro ci-dessus). "
+             "Les demandes mises de côté sont effacées au bout de " + str(CONSERVATION_SUSPECTS_JOURS) + " jours.")
+    corps_html = '<pre style="font:14px/1.5 Arial,sans-serif;white-space:pre-wrap;">' + e(texte) + '</pre>'
+    ok, info = appel_brevo({'sender': {'email': EXPEDITEUR, 'name': NOM_EXPEDITEUR}, 'to': [{'email': DESTINATAIRE}],
+                            'subject': f'{len(a_dire)} demande(s) douteuse(s) mise(s) de côté', 'textContent': texte,
+                            'htmlContent': corps_html, 'tags': [f'suspects-{SLUG}']}, essais=1)
+    if not ok:
+        journal('resume-suspects-echec', erreur=info)
+        return False
+    for f, d in a_dire:
+        d['resume_envoye'] = True
+        f.write_text(json.dumps(d, ensure_ascii=False), encoding='utf-8')
+    marque.write_text(datetime.now(timezone.utc).isoformat(), encoding='utf-8')
+    journal('resume-suspects', nombre=len(a_dire))
+    return True
+
+
+def liberer(identifiant: str) -> int:
+    for f, d in lister_suspects():
+        if d['id'] == identifiant:
+            for k in ('score', 'raisons', 'resume_envoye'):
+                d.pop(k, None)
+            FILE.mkdir(parents=True, exist_ok=True)
+            cible = FILE / f.name
+            cible.write_text(json.dumps(d, ensure_ascii=False), encoding='utf-8')
+            os.chmod(cible, 0o600)
+            f.unlink()
+            ok = traiter_fichier(cible)
+            print('envoyée' if ok else 'enregistrée, l\'envoi réessaiera dans 5 minutes')
+            return 0
+    print('numéro inconnu : voir --suspects')
+    return 1
+
+
 def relancer() -> int:
     """Minuteur : renvoie la file, purge les copies anciennes. Code de sortie 1 si une demande attend depuis plus d'1 h."""
     vieille = False
@@ -355,6 +492,10 @@ def relancer() -> int:
     for f in ENVOYEES.glob('*.json') if ENVOYEES.exists() else []:
         if time.time() - f.stat().st_mtime > CONSERVATION_JOURS * 86400:
             f.unlink()
+    for f in SUSPECTS.glob('*.json') if SUSPECTS.exists() else []:
+        if time.time() - f.stat().st_mtime > CONSERVATION_SUSPECTS_JOURS * 86400:
+            f.unlink()
+    resume_suspects()
     return 1 if vieille else 0
 
 
@@ -379,15 +520,20 @@ class Gestionnaire(BaseHTTPRequestHandler):
 
     def do_GET(self):
         if self.path.split('?')[0] == '/sante':
-            return self.repondre(200, {'ok': True, 'en_attente': len(list(FILE.glob('*.json')))})
+            return self.repondre(200, {'ok': True, 'en_attente': len(list(FILE.glob('*.json'))), 'suspects': len(list(SUSPECTS.glob('*.json'))) if SUSPECTS.exists() else 0})
         self.repondre(404, {'ok': False, 'erreurs': ['Ressource inconnue.']})
 
     def do_POST(self):
         m = re.fullmatch(r'/f/([a-z0-9]+(?:-[a-z0-9]+)*)/?', self.path.split('?')[0])
         if not m or m.group(1) != SLUG:
             return self.repondre(404, {'ok': False, 'erreurs': ['Identifiant de site invalide.']})
+        # Un navigateur envoie toujours l'origine (ou au moins la page d'où part le formulaire) ; un robot qui poste
+        # directement n'a aucune raison de le faire.
         origine = self.headers.get('origin')
-        if origine and origine not in ORIGINES:
+        if not origine and self.headers.get('referer'):
+            r = urllib.parse.urlsplit(self.headers.get('referer'))
+            origine = f'{r.scheme}://{r.netloc}' if r.scheme and r.netloc else None
+        if not origine or origine not in ORIGINES:
             journal('rejet', motif='origine-refusee')
             return self.repondre(403, {'ok': False, 'erreurs': ['Origine non autorisée.']})
         longueur = int(self.headers.get('content-length') or 0)
@@ -426,11 +572,22 @@ class Gestionnaire(BaseHTTPRequestHandler):
         if erreurs:
             return self.repondre(422, {'ok': False, 'erreurs': erreurs})
         d.update(id=uuid.uuid4().hex[:16], recu_le=datetime.now(timezone.utc).isoformat(timespec='seconds'), slug=SLUG)
-        FILE.mkdir(parents=True, exist_ok=True)
-        tmp = FILE / f".{d['id']}.tmp"
+        points, raisons = evaluer(d, maintenant)
+        suspect = points >= SEUIL_SUSPECT
+        dossier = SUSPECTS if suspect else FILE
+        if suspect:
+            d.update(score=points, raisons=raisons)
+        else:
+            with _verrou:
+                _recentes.append(maintenant)
+        dossier.mkdir(parents=True, exist_ok=True)
+        tmp = dossier / f".{d['id']}.tmp"
         tmp.write_text(json.dumps(d, ensure_ascii=False), encoding='utf-8')
         os.chmod(tmp, 0o600)
-        f = tmp.replace(FILE / f"{d['recu_le'][:19].replace(':', '')}-{d['id']}.json")
+        f = tmp.replace(dossier / f"{d['recu_le'][:19].replace(':', '')}-{d['id']}.json")
+        if suspect:
+            journal('suspecte', id=d['id'], points=points, nombre_de_raisons=len(raisons))
+            return self.repondre(200, {'ok': True})   # même réponse qu'une vraie demande : un robot ne doit rien apprendre
         journal('demande', id=d['id'])
         # La demande est enregistrée : elle ne peut plus être perdue. L'e-mail part dans la foulée ;
         # s'il échoue, le minuteur le renverra.
@@ -442,6 +599,12 @@ if __name__ == '__main__':
     os.umask(0o077)
     if '--relancer' in sys.argv:
         sys.exit(relancer())
+    if '--suspects' in sys.argv:
+        for _, d in lister_suspects():
+            print(f"{d['id']}  {d['recu_le']}  {d['nom']}  {d['telephone'] or '-'}  {d['email'] or '-'}  [{d['score']} pts : {' ; '.join(d['raisons'])}]")
+        sys.exit(0)
+    if '--liberer' in sys.argv:
+        sys.exit(liberer(sys.argv[sys.argv.index('--liberer') + 1] if len(sys.argv) > sys.argv.index('--liberer') + 1 else ''))
     if not CLE:
         journal('attention', message='BREVO_API_KEY absente : les demandes sont enregistrées mais aucun e-mail ne part')
     serveur = ThreadingHTTPServer(('127.0.0.1', PORT), Gestionnaire)
